@@ -387,10 +387,19 @@ export class XCAssetsViewer {
             object-fit: contain;
             border-radius: 2px;
           }
-          .asset-thumbnail-canvas {
+          .asset-thumbnail-container {
             width: 24px;
             height: 24px;
             flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          .asset-thumbnail-canvas {
+            max-width: 24px;
+            max-height: 24px;
+            width: auto;
+            height: auto;
             border-radius: 2px;
             background: transparent;
           }
@@ -737,15 +746,47 @@ export class XCAssetsViewer {
           }
 
           // Helper: Render PDF to canvas
-          async function renderPdfToCanvas(pdfUrl, canvas, scale = 1) {
+          async function renderPdfToCanvas(pdfUrl, canvas, scale = 1, maxWidth = null, maxHeight = null) {
             try {
               const loadingTask = pdfjsLib.getDocument(pdfUrl);
               const pdf = await loadingTask.promise;
               const page = await pdf.getPage(1);
-              const viewport = page.getViewport({ scale });
+              
+              // Get the natural viewport at scale 1 to calculate aspect ratio
+              const naturalViewport = page.getViewport({ scale: 1 });
+              const aspectRatio = naturalViewport.width / naturalViewport.height;
+              
+              // Get device pixel ratio for high-DPI displays
+              const devicePixelRatio = window.devicePixelRatio || 1;
+              const resolutionMultiplier = 2; // Render at 2x for better quality
+              
+              // Calculate the actual scale to use
+              let actualScale = scale;
+              if (maxWidth !== null && maxHeight !== null) {
+                // Calculate scale to fit within max dimensions while maintaining aspect ratio
+                const scaleX = maxWidth / naturalViewport.width;
+                const scaleY = maxHeight / naturalViewport.height;
+                const fitScale = Math.min(scaleX, scaleY);
+                // Multiply by resolution multiplier for high-quality rendering
+                actualScale = fitScale * resolutionMultiplier * devicePixelRatio;
+              } else {
+                // If no max dimensions, use the provided scale with multiplier
+                actualScale = scale * resolutionMultiplier * devicePixelRatio;
+              }
+              
+              const viewport = page.getViewport({ scale: actualScale });
               const context = canvas.getContext('2d');
+              
+              // Set canvas internal size to high resolution
               canvas.height = viewport.height;
               canvas.width = viewport.width;
+              
+              // Set canvas display size to the desired max dimensions while maintaining aspect ratio
+              if (maxWidth !== null && maxHeight !== null) {
+                const displayScale = Math.min(maxWidth / naturalViewport.width, maxHeight / naturalViewport.height);
+                canvas.style.width = (naturalViewport.width * displayScale) + 'px';
+                canvas.style.height = (naturalViewport.height * displayScale) + 'px';
+              }
               
               var renderContext = {
                 canvasContext: context,
@@ -796,7 +837,7 @@ export class XCAssetsViewer {
                     if (firstImage) {
                       const isPdf = firstImage.filename.toLowerCase().endsWith('.pdf');
                       if (isPdf) {
-                        iconHtml = \`<canvas class="asset-thumbnail-canvas" data-pdf-url="\${firstImage.uri}" data-idx="\${assetIndex}"></canvas>\`;
+                        iconHtml = \`<div class="asset-thumbnail-container"><canvas class="asset-thumbnail-canvas" data-pdf-url="\${firstImage.uri}" data-idx="\${assetIndex}"></canvas></div>\`;
                       } else {
                         iconHtml = \`<img src="\${firstImage.uri}" class="asset-thumbnail" alt="\${item.name}" />\`;
                       }
@@ -837,7 +878,7 @@ export class XCAssetsViewer {
             const pdfCanvases = listEl.querySelectorAll('canvas[data-pdf-url]');
             for (const canvas of pdfCanvases) {
               const pdfUrl = canvas.dataset.pdfUrl;
-              await renderPdfToCanvas(pdfUrl, canvas, 0.2);
+              await renderPdfToCanvas(pdfUrl, canvas, 1, 24, 24);
             }
 
             // Add click handlers for folders
@@ -1053,7 +1094,7 @@ export class XCAssetsViewer {
               const pdfCanvases = panel.querySelectorAll('canvas[data-preview-pdf]');
               for (const canvas of pdfCanvases) {
                 const pdfUrl = canvas.dataset.pdfUrl;
-                await renderPdfToCanvas(pdfUrl, canvas, 0.5);
+                await renderPdfToCanvas(pdfUrl, canvas, 1, 90, 90);
               }
 
               // Add click handlers for image slots
