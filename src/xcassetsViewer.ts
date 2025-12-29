@@ -68,6 +68,16 @@ export class XCAssetsViewer {
             imageSet,
           });
         }
+      } else if (entry.name.endsWith('.appiconset')) {
+        const appIconSet = await this.parseAppIconSet(entryPath);
+        if (appIconSet) {
+          items.push({
+            type: 'appiconset',
+            name: appIconSet.name,
+            path: entryPath,
+            appIconSet,
+          });
+        }
       } else if (entry.name.endsWith('.colorset')) {
         const colorSet = await this.parseColorSet(entryPath);
         if (colorSet) {
@@ -132,6 +142,37 @@ export class XCAssetsViewer {
     return {
       name: path.basename(imageSetPath, '.imageset'),
       images,
+    };
+  }
+
+  private async parseAppIconSet(appIconSetPath: string): Promise<AppIconSet | null> {
+    const contentsPath = path.join(appIconSetPath, 'Contents.json');
+    if (!fs.existsSync(contentsPath)) {
+      return null;
+    }
+
+    const contents = JSON.parse(
+      await fs.promises.readFile(contentsPath, 'utf8')
+    );
+    const icons: AppIconVariant[] = [];
+
+    for (const image of contents.images || []) {
+      const imagePath = image.filename
+        ? path.join(appIconSetPath, image.filename)
+        : undefined;
+      icons.push({
+        filename: image.filename || '',
+        size: image.size,
+        idiom: image.idiom || 'universal',
+        platform: image.platform,
+        appearances: image.appearances || [],
+        path: imagePath || '',
+      });
+    }
+
+    return {
+      name: path.basename(appIconSetPath, '.appiconset'),
+      icons,
     };
   }
 
@@ -202,6 +243,16 @@ export class XCAssetsViewer {
             type: 'data',
             name: item.dataSet.name,
             data: item.dataSet.data
+          };
+        } else if (item.type === 'appiconset' && item.appIconSet) {
+          return {
+            type: 'appicon',
+            name: item.appIconSet.name,
+            icons: item.appIconSet.icons.map(icon => ({
+              ...icon,
+              uri: icon.path ? webview.asWebviewUri(vscode.Uri.file(icon.path)).toString() : '',
+              fsPath: icon.path
+            }))
           };
         }
         return null;
@@ -307,6 +358,14 @@ export class XCAssetsViewer {
             border-radius: 2px;
             background: white;
           }
+          .asset-thumbnail-placeholder {
+            width: 24px;
+            height: 24px;
+            flex-shrink: 0;
+            border-radius: 2px;
+            border: 1px dashed var(--vscode-descriptionForeground);
+            opacity: 0.5;
+          }
 
           /* Middle Panel - Preview */
           .middle-panel {
@@ -407,6 +466,14 @@ export class XCAssetsViewer {
             margin: 0 auto;
             padding: 4px;
             background-clip: content-box;
+          }
+          .color-preview-placeholder {
+            width: 90px;
+            height: 90px;
+            border: 2px dashed var(--vscode-descriptionForeground);
+            border-radius: 8px;
+            margin: 0 auto;
+            opacity: 0.5;
           }
           .variant-item {
             border: 2px solid transparent;
@@ -635,9 +702,20 @@ export class XCAssetsViewer {
                       iconHtml = \`<i class="codicon codicon-file-media asset-icon"></i>\`;
                     }
                   } else if (item.type === 'color') {
-                    const color = item.colors[0] || {};
-                    const colorValue = getColorValue(color.color);
-                    iconHtml = \`<div class="asset-thumbnail" style="background-color: \${colorValue}; border: 1px solid var(--vscode-panel-border);"></div>\`;
+                    if (item.colors && item.colors.length > 0 && item.colors[0].color && item.colors[0].color.components) {
+                      const color = item.colors[0];
+                      const colorValue = getColorValue(color.color);
+                      iconHtml = \`<div class="asset-thumbnail" style="background-color: \${colorValue}; border: 1px solid var(--vscode-panel-border);"></div>\`;
+                    } else {
+                      iconHtml = \`<div class="asset-thumbnail-placeholder"></div>\`;
+                    }
+                  } else if (item.type === 'appicon') {
+                    const firstIcon = item.icons.find(icon => icon.filename);
+                    if (firstIcon) {
+                      iconHtml = \`<img src="\${firstIcon.uri}" class="asset-thumbnail" alt="\${item.name}" />\`;
+                    } else {
+                      iconHtml = \`<div class="asset-thumbnail-placeholder"></div>\`;
+                    }
                   } else {
                     iconHtml = \`<i class="codicon codicon-database asset-icon"></i>\`;
                   }
@@ -908,7 +986,8 @@ export class XCAssetsViewer {
               const idiomHtml = Object.keys(idiomGroups).map(idiom => {
                 const colors = idiomGroups[idiom];
                 const colorsHtml = colors.map(colorItem => {
-                  const colorValue = getColorValue(colorItem.color);
+                  const hasValidColor = colorItem.color && colorItem.color.components;
+                  const colorValue = hasValidColor ? getColorValue(colorItem.color) : '';
                   const appearances = colorItem.appearances || [];
                   const luminosity = appearances.find(a => a.appearance === 'luminosity');
                   const contrast = appearances.find(a => a.appearance === 'contrast');
@@ -928,9 +1007,13 @@ export class XCAssetsViewer {
 
                   const label = labelParts.join('<br>');
 
+                  const colorPreviewHtml = hasValidColor
+                    ? \`<div class="color-preview" style="background-color: \${colorValue}"></div>\`
+                    : \`<div class="color-preview-placeholder"></div>\`;
+
                   return \`
                     <div class="preview-item variant-item" data-color-index="\${colorItem.colorIndex}">
-                      <div class="color-preview" style="background-color: \${colorValue}"></div>
+                      \${colorPreviewHtml}
                       <div class="preview-label">\${label}</div>
                     </div>
                   \`;
@@ -981,6 +1064,90 @@ export class XCAssetsViewer {
 
                   const colorIndex = parseInt(item.dataset.colorIndex);
                   renderColorProperties(asset, colorIndex);
+                });
+              });
+            } else if (asset.type === 'appicon') {
+              // Group icons by size and appearance
+              const sizeGroups = {};
+
+              asset.icons.forEach(icon => {
+                const sizeKey = icon.size || 'unknown';
+                if (!sizeGroups[sizeKey]) {
+                  sizeGroups[sizeKey] = [];
+                }
+                sizeGroups[sizeKey].push(icon);
+              });
+
+              // Generate slots for each size
+              const iconSlotsHtml = Object.keys(sizeGroups).map(size => {
+                const icons = sizeGroups[size];
+
+                // Find default, dark, and tinted variants
+                const defaultIcon = icons.find(i => !i.appearances || i.appearances.length === 0);
+                const darkIcon = icons.find(i => i.appearances?.some(a => a.value === 'dark'));
+                const tintedIcon = icons.find(i => i.appearances?.some(a => a.value === 'tinted'));
+
+                const variants = [
+                  { icon: defaultIcon, label: 'Any' },
+                  { icon: darkIcon, label: 'Dark' },
+                  { icon: tintedIcon, label: 'Tinted' }
+                ];
+
+                const variantsHtml = variants.map(({ icon, label }) => {
+                  if (icon && icon.filename) {
+                    return \`
+                      <div class="variant-item" data-icon-filename="\${icon.filename}" data-icon-uri="\${icon.uri}" data-icon-fspath="\${icon.fsPath || ''}" data-icon-size="\${size}" data-icon-appearance="\${label}" style="display: flex; flex-direction: column; align-items: center;">
+                        <div class="image-slot filled">
+                          <img src="\${icon.uri}" alt="\${label}" style="max-width: 90px; max-height: 90px;" />
+                        </div>
+                        <div class="slot-label">\${label}</div>
+                      </div>
+                    \`;
+                  } else {
+                    return \`
+                      <div style="display: flex; flex-direction: column; align-items: center;">
+                        <div class="image-slot empty">
+                          <span class="plus-icon">+</span>
+                        </div>
+                        <div class="slot-label">\${label}</div>
+                      </div>
+                    \`;
+                  }
+                }).join('');
+
+                return \`
+                  <div class="device-group">
+                    <div class="slot-grid">\${variantsHtml}</div>
+                    <div class="device-group-label">\${size}</div>
+                  </div>
+                \`;
+              }).join('');
+
+              panel.innerHTML = \`
+                <div class="preview-container">
+                  <div class="preview-title">\${asset.name}</div>
+                  <div class="preview-content" style="flex-direction: column; width: 100%;">
+                    \${iconSlotsHtml}
+                  </div>
+                </div>
+              \`;
+
+              // Add click handlers for icon slots
+              panel.querySelectorAll('.variant-item[data-icon-filename]').forEach(item => {
+                item.addEventListener('click', async (e) => {
+                  // Remove selection from all icon variants
+                  panel.querySelectorAll('.variant-item[data-icon-filename]').forEach(v => {
+                    v.classList.remove('selected');
+                  });
+                  // Select this variant
+                  item.classList.add('selected');
+
+                  const filename = item.dataset.iconFilename;
+                  const uri = item.dataset.iconUri;
+                  const size = item.dataset.iconSize;
+                  const appearance = item.dataset.iconAppearance;
+
+                  await renderAppIconVariantProperties(asset, filename, uri, size, appearance);
                 });
               });
             } else if (asset.type === 'data') {
@@ -1141,6 +1308,79 @@ export class XCAssetsViewer {
               <div class="property-section">
                 <div class="property-title">Components</div>
                 \${componentsHtml}
+              </div>
+            \`;
+          }
+
+          // Render app icon variant properties
+          async function renderAppIconVariantProperties(asset, filename, uri, size, appearance) {
+            const panel = document.getElementById('propertiesPanel');
+
+            // Get image dimensions
+            let imageWidth = 0;
+            let imageHeight = 0;
+            try {
+              const img = new Image();
+              await new Promise((resolve, reject) => {
+                img.onload = () => {
+                  imageWidth = img.naturalWidth;
+                  imageHeight = img.naturalHeight;
+                  resolve();
+                };
+                img.onerror = reject;
+                img.src = uri;
+              });
+            } catch (e) {
+              console.error('Failed to load image:', e);
+            }
+
+            const imageSizeText = imageWidth && imageHeight
+              ? \`\${imageWidth} × \${imageHeight} pixels\`
+              : 'Unknown';
+
+            // Collect platforms
+            const platforms = new Set();
+            asset.icons.forEach(icon => {
+              if (icon.platform) {
+                platforms.add(icon.platform);
+              }
+            });
+
+            const platformsList = Array.from(platforms).join(', ');
+
+            panel.innerHTML = \`
+              <div class="property-section">
+                <div class="property-title">Name</div>
+                <div class="property-value">\${asset.name}</div>
+              </div>
+              <div class="property-section">
+                <div class="property-title">Type</div>
+                <div class="property-value">App Icon Set</div>
+              </div>
+              <div class="property-section">
+                <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">
+                  Platforms
+                </div>
+                <div class="property-value">\${platformsList || 'iOS'}</div>
+              </div>
+              <div class="property-section" style="border-top: 1px solid var(--vscode-panel-border); padding-top: 16px; margin-top: 16px;">
+                <div class="property-title">Icon</div>
+                <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px; margin-top: 12px;">
+                  Size
+                </div>
+                <div class="property-value">\${size}</div>
+                <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px; margin-top: 12px;">
+                  Appearance
+                </div>
+                <div class="property-value">\${appearance}</div>
+                <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px; margin-top: 12px;">
+                  File Name
+                </div>
+                <div class="property-value">\${filename}</div>
+                <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px; margin-top: 12px;">
+                  Image Size
+                </div>
+                <div class="property-value">\${imageSizeText}</div>
               </div>
             \`;
           }
@@ -1307,6 +1547,43 @@ export class XCAssetsViewer {
                 <div class="property-section">
                   <div class="property-title">Scales</div>
                   <div class="property-value">\${scales}</div>
+                </div>
+              \`;
+            } else if (asset.type === 'appicon') {
+              // Collect platforms and sizes
+              const platforms = new Set();
+              const sizes = new Set();
+
+              asset.icons.forEach(icon => {
+                if (icon.platform) {
+                  platforms.add(icon.platform);
+                }
+                if (icon.size) {
+                  sizes.add(icon.size);
+                }
+              });
+
+              const platformsList = Array.from(platforms).join(', ');
+              const sizesList = Array.from(sizes).join(', ');
+
+              panel.innerHTML = \`
+                <div class="property-section">
+                  <div class="property-title">Name</div>
+                  <div class="property-value">\${asset.name}</div>
+                </div>
+                <div class="property-section">
+                  <div class="property-title">Type</div>
+                  <div class="property-value">App Icon Set</div>
+                </div>
+                <div class="property-section">
+                  <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">
+                    Platforms
+                  </div>
+                  <div class="property-value">\${platformsList || 'iOS'}</div>
+                </div>
+                <div class="property-section">
+                  <div class="property-title">Sizes</div>
+                  <div class="property-value">\${sizesList}</div>
                 </div>
               \`;
             } else if (asset.type === 'color') {
@@ -1515,12 +1792,13 @@ interface AssetCatalog {
 }
 
 interface AssetItem {
-  type: 'folder' | 'imageset' | 'colorset' | 'dataset';
+  type: 'folder' | 'imageset' | 'colorset' | 'dataset' | 'appiconset';
   name: string;
   path?: string;
   imageSet?: ImageSet;
   colorSet?: ColorSet;
   dataSet?: DataSet;
+  appIconSet?: AppIconSet;
   children?: AssetItem[];
 }
 
@@ -1545,4 +1823,18 @@ interface ColorSet {
 interface DataSet {
   name: string;
   data: any[];
+}
+
+interface AppIconSet {
+  name: string;
+  icons: AppIconVariant[];
+}
+
+interface AppIconVariant {
+  filename: string;
+  size?: string;
+  idiom: string;
+  platform?: string;
+  appearances: any[];
+  path: string;
 }
