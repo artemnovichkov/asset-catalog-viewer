@@ -182,6 +182,7 @@ export class XCAssetsViewer {
             align-items: center;
             gap: 6px;
             user-select: none;
+            outline: none;
           }
           .asset-list-item:hover {
             background-color: var(--vscode-list-hoverBackground);
@@ -189,6 +190,11 @@ export class XCAssetsViewer {
           .asset-list-item.selected {
             background-color: var(--vscode-list-activeSelectionBackground);
             color: var(--vscode-list-activeSelectionForeground);
+          }
+          .asset-list-item:focus,
+          .asset-list-item:focus-visible {
+            outline: 2px solid var(--vscode-focusBorder);
+            outline-offset: -2px;
           }
           .asset-list-item.folder {
             font-weight: 500;
@@ -450,6 +456,10 @@ export class XCAssetsViewer {
           .finder-button:hover {
             background-color: var(--vscode-button-secondaryHoverBackground);
           }
+          .finder-button:focus-visible {
+            outline: 2px solid var(--vscode-focusBorder);
+            outline-offset: 2px;
+          }
           .property-list {
             list-style: none;
           }
@@ -461,6 +471,45 @@ export class XCAssetsViewer {
             text-align: center;
             color: var(--vscode-descriptionForeground);
             padding: 40px 20px;
+          }
+
+          /* Loading State */
+          .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.3);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+          }
+          .loading-overlay.visible {
+            display: flex;
+          }
+          .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid var(--vscode-panel-border);
+            border-top-color: var(--vscode-progressBar-background);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+          }
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+          .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
           }
 
           /* Context Menu */
@@ -513,6 +562,12 @@ export class XCAssetsViewer {
           </div>
         </div>
 
+        <div class="loading-overlay" id="loadingOverlay">
+          <div class="spinner" role="status" aria-live="polite">
+            <span class="sr-only">Loading assets...</span>
+          </div>
+        </div>
+
         <script>
           // Configure PDF.js
           pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -522,6 +577,21 @@ export class XCAssetsViewer {
           let currentSelectedAssetIndex = -1;
           let expandedFolders = new Set();
           let filterText = '';
+
+          // Loading state management
+          function showLoading() {
+            const overlay = document.getElementById('loadingOverlay');
+            if (overlay) {
+              overlay.classList.add('visible');
+            }
+          }
+
+          function hideLoading() {
+            const overlay = document.getElementById('loadingOverlay');
+            if (overlay) {
+              overlay.classList.remove('visible');
+            }
+          }
 
           // Flatten items into assets array (excluding folders)
           // Add unique ID to each asset for reliable indexing
@@ -680,6 +750,7 @@ export class XCAssetsViewer {
 
           // Render asset list with hierarchy
           async function renderAssetList() {
+            showLoading();
             const listEl = document.getElementById('assetList');
 
             // Apply filter
@@ -776,6 +847,8 @@ export class XCAssetsViewer {
                 selectAsset(idx);
               });
             });
+
+            hideLoading();
           }
 
           // Toggle folder expand/collapse
@@ -1912,6 +1985,73 @@ export class XCAssetsViewer {
                   if (fsPath) {
                     vscode.postMessage({ command: 'quicklook', filePath: fsPath });
                   }
+                }
+              }
+            });
+
+            // Keyboard navigation for asset list
+            document.addEventListener('keydown', (e) => {
+              // Only handle arrow keys and Enter when not in input field
+              if (e.target.tagName === 'INPUT') return;
+
+              if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter') {
+                e.preventDefault();
+
+                // Get all visible asset items (not folders)
+                const assetItems = Array.from(document.querySelectorAll('.asset-list-item:not(.folder)'));
+                if (assetItems.length === 0) return;
+
+                const currentIndex = currentSelectedAssetIndex;
+
+                if (e.key === 'ArrowDown') {
+                  // Find next asset in visible list
+                  const currentVisibleIndex = assetItems.findIndex(item => {
+                    const idx = parseInt(item.dataset.index || '-1');
+                    return idx === currentIndex;
+                  });
+
+                  if (currentVisibleIndex < assetItems.length - 1) {
+                    const nextItem = assetItems[currentVisibleIndex + 1];
+                    const nextIndex = parseInt(nextItem.dataset.index || '-1');
+                    if (nextIndex >= 0) {
+                      selectAsset(nextIndex);
+                      nextItem.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                    }
+                  } else if (currentVisibleIndex === -1 && assetItems.length > 0) {
+                    // No selection, select first
+                    const firstItem = assetItems[0];
+                    const firstIndex = parseInt(firstItem.dataset.index || '-1');
+                    if (firstIndex >= 0) {
+                      selectAsset(firstIndex);
+                      firstItem.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                    }
+                  }
+                } else if (e.key === 'ArrowUp') {
+                  // Find previous asset in visible list
+                  const currentVisibleIndex = assetItems.findIndex(item => {
+                    const idx = parseInt(item.dataset.index || '-1');
+                    return idx === currentIndex;
+                  });
+
+                  if (currentVisibleIndex > 0) {
+                    const prevItem = assetItems[currentVisibleIndex - 1];
+                    const prevIndex = parseInt(prevItem.dataset.index || '-1');
+                    if (prevIndex >= 0) {
+                      selectAsset(prevIndex);
+                      prevItem.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                    }
+                  } else if (currentVisibleIndex === -1 && assetItems.length > 0) {
+                    // No selection, select last
+                    const lastItem = assetItems[assetItems.length - 1];
+                    const lastIndex = parseInt(lastItem.dataset.index || '-1');
+                    if (lastIndex >= 0) {
+                      selectAsset(lastIndex);
+                      lastItem.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                    }
+                  }
+                } else if (e.key === 'Enter') {
+                  // Enter doesn't do anything special for now (asset is already selected)
+                  // Could be extended to trigger some action
                 }
               }
             });
