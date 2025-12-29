@@ -223,7 +223,7 @@ export class XCAssetsViewer {
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-start;
             padding: 40px;
             overflow: auto;
           }
@@ -252,11 +252,13 @@ export class XCAssetsViewer {
             border-radius: 4px;
           }
           .color-preview {
-            width: 120px;
-            height: 120px;
-            border: 1px solid var(--vscode-panel-border);
+            width: 90px;
+            height: 90px;
+            border: 3px solid #666;
             border-radius: 8px;
             margin: 0 auto;
+            padding: 4px;
+            background-clip: content-box;
           }
           .pdf-preview-canvas {
             border: 1px solid var(--vscode-panel-border);
@@ -363,9 +365,12 @@ export class XCAssetsViewer {
                 } else {
                   iconHtml = \`<img src="\${asset.images[0].uri}" class="asset-thumbnail" alt="\${asset.name}" />\`;
                 }
+              } else if (asset.type === 'color') {
+                const color = asset.colors[0] || {};
+                const colorValue = getColorValue(color.color);
+                iconHtml = \`<div class="asset-thumbnail" style="background-color: \${colorValue}; border: 1px solid var(--vscode-panel-border);"></div>\`;
               } else {
-                const iconClass = asset.type === 'color' ? 'codicon-symbol-color' : 'codicon-database';
-                iconHtml = \`<i class="codicon \${iconClass} asset-icon"></i>\`;
+                iconHtml = \`<i class="codicon codicon-database asset-icon"></i>\`;
               }
               return \`<div class="asset-list-item" data-index="\${idx}">
                 \${iconHtml}
@@ -438,18 +443,72 @@ export class XCAssetsViewer {
                 await renderPdfToCanvas(pdfUrl, canvas, 1.5);
               }
             } else if (asset.type === 'color') {
-              const color = asset.colors[0] || {};
-              const colorValue = getColorValue(color.color);
-              const appearance = color.appearances?.[0]?.value || 'any';
+              // Group colors by idiom (mac-catalyst goes under ipad)
+              const idiomGroups = {};
+              asset.colors.forEach(colorItem => {
+                const idiom = colorItem.idiom || 'universal';
+                if (!idiomGroups[idiom]) {
+                  idiomGroups[idiom] = [];
+                }
+                idiomGroups[idiom].push(colorItem);
+              });
+
+              // Generate HTML for each idiom group
+              const idiomHtml = Object.keys(idiomGroups).map(idiom => {
+                const colors = idiomGroups[idiom];
+                const colorsHtml = colors.map(colorItem => {
+                  const colorValue = getColorValue(colorItem.color);
+                  const appearances = colorItem.appearances || [];
+                  const luminosity = appearances.find(a => a.appearance === 'luminosity');
+                  const contrast = appearances.find(a => a.appearance === 'contrast');
+
+                  let label1 = luminosity?.value === 'dark' ? 'Dark' : 'Any Luminosity';
+                  let label2 = contrast?.value === 'high' ? 'High Contrast' : 'Normal Contrast';
+
+                  // Show "Mac Catalyst Scaled" prefix for mac-catalyst items
+                  if (colorItem.subtype === 'mac-catalyst') {
+                    label1 = 'Mac Catalyst Scaled<br>' + label1;
+                  }
+
+                  const label = \`\${label1}<br>\${label2}\`;
+
+                  return \`
+                    <div class="preview-item">
+                      <div class="color-preview" style="background-color: \${colorValue}"></div>
+                      <div class="preview-label">\${label}</div>
+                    </div>
+                  \`;
+                }).join('');
+
+                const idiomTitles = {
+                  'universal': 'Universal',
+                  'iphone': 'iPhone',
+                  'ipad': 'iPad',
+                  'mac': 'Mac',
+                  'tv': 'Apple TV',
+                  'watch': 'Apple Watch',
+                  'car': 'CarPlay',
+                  'vision': 'Apple Vision',
+                  'Mac Catalyst Scaled': 'Mac Catalyst Scaled'
+                };
+                const idiomTitle = idiomTitles[idiom] || idiom;
+                return \`
+                  <div style="width: 100%; margin-bottom: 30px;">
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 15px;">
+                      \${colorsHtml}
+                    </div>
+                    <div style="border-top: 1px solid var(--vscode-panel-border); padding-top: 10px;">
+                      <div style="font-size: 14px; font-weight: 500; color: var(--vscode-descriptionForeground);">\${idiomTitle}</div>
+                    </div>
+                  </div>
+                \`;
+              }).join('');
 
               panel.innerHTML = \`
                 <div class="preview-container">
                   <div class="preview-title">\${asset.name}</div>
-                  <div class="preview-content">
-                    <div class="preview-item">
-                      <div class="color-preview" style="background-color: \${colorValue}"></div>
-                      <div class="preview-label">\${appearance}</div>
-                    </div>
+                  <div class="preview-content" style="flex-direction: column; align-items: flex-start; width: 100%;">
+                    \${idiomHtml}
                   </div>
                 </div>
               \`;
@@ -492,9 +551,60 @@ export class XCAssetsViewer {
                 </div>
               \`;
             } else if (asset.type === 'color') {
-              const color = asset.colors[0] || {};
-              const appearances = color.appearances?.map(a => a.value).join(', ') || 'None';
-              const gamut = color.color?.['color-space'] || 'sRGB';
+              // Collect unique idioms and appearances
+              const idioms = new Set();
+              const hasLuminosity = new Set();
+              const hasContrast = new Set();
+              let gamut = 'Any';
+
+              asset.colors.forEach(colorItem => {
+                if (colorItem.subtype === 'mac-catalyst') {
+                  idioms.add('mac-catalyst');
+                } else {
+                  idioms.add(colorItem.idiom || 'universal');
+                }
+
+                if (colorItem.color?.['color-space']) {
+                  gamut = colorItem.color['color-space'].toUpperCase();
+                }
+
+                const appearances = colorItem.appearances || [];
+                appearances.forEach(app => {
+                  if (app.appearance === 'luminosity') {
+                    hasLuminosity.add(app.value);
+                  } else if (app.appearance === 'contrast') {
+                    hasContrast.add(app.value);
+                  }
+                });
+              });
+
+              // Device checkboxes
+              const allDevices = [
+                { id: 'iphone', label: 'iPhone' },
+                { id: 'ipad', label: 'iPad' },
+                { id: 'mac-catalyst', label: 'Mac Catalyst Scaled' },
+                { id: 'car', label: 'CarPlay' },
+                { id: 'mac', label: 'Mac' },
+                { id: 'vision', label: 'Apple Vision' },
+                { id: 'watch', label: 'Apple Watch' },
+                { id: 'tv', label: 'Apple TV' }
+              ];
+
+              const devicesHtml = allDevices.map(device => {
+                const checked = idioms.has(device.id) ? '☑' : '☐';
+                const indent = device.id === 'mac-catalyst' ? 'padding-left: 16px;' : '';
+                return \`<div style="padding: 2px 0; \${indent}">\${checked} \${device.label}</div>\`;
+              }).join('');
+
+              // Appearances
+              const appearancesHtml = \`
+                <div style="padding: 2px 0;">Any, Dark</div>
+                <div style="padding: 2px 0; padding-left: 16px;">\${hasContrast.has('high') ? '☑' : '☐'} High Contrast</div>
+              \`;
+
+              const universalHtml = idioms.has('universal')
+                ? '<div style="padding: 2px 0; margin-bottom: 4px;">☑ Universal</div>'
+                : '';
 
               panel.innerHTML = \`
                 <div class="property-section">
@@ -502,16 +612,17 @@ export class XCAssetsViewer {
                   <div class="property-value">\${asset.name}</div>
                 </div>
                 <div class="property-section">
-                  <div class="property-title">Type</div>
-                  <div class="property-value">Color Set</div>
-                </div>
-                <div class="property-section">
                   <div class="property-title">Devices</div>
-                  <div class="property-value">Universal</div>
+                  <div style="font-size: 12px; line-height: 1.5;">
+                    \${universalHtml}
+                    \${devicesHtml}
+                  </div>
                 </div>
                 <div class="property-section">
                   <div class="property-title">Appearances</div>
-                  <div class="property-value">\${appearances}</div>
+                  <div style="font-size: 12px; line-height: 1.5;">
+                    \${appearancesHtml}
+                  </div>
                 </div>
                 <div class="property-section">
                   <div class="property-title">Gamut</div>
@@ -543,9 +654,14 @@ export class XCAssetsViewer {
             if (!components) return '#000000';
 
             if (components.red !== undefined) {
-              const r = Math.round(parseFloat(components.red) * 255);
-              const g = Math.round(parseFloat(components.green) * 255);
-              const b = Math.round(parseFloat(components.blue) * 255);
+              // Check if values are normalized (0-1) or already in 0-255 range
+              const redVal = parseFloat(components.red);
+              const greenVal = parseFloat(components.green);
+              const blueVal = parseFloat(components.blue);
+
+              const r = redVal > 1 ? Math.round(redVal) : Math.round(redVal * 255);
+              const g = greenVal > 1 ? Math.round(greenVal) : Math.round(greenVal * 255);
+              const b = blueVal > 1 ? Math.round(blueVal) : Math.round(blueVal * 255);
               return \`rgb(\${r}, \${g}, \${b})\`;
             }
 
