@@ -392,7 +392,7 @@ export class XCAssetsViewer {
             height: 24px;
             flex-shrink: 0;
             border-radius: 2px;
-            background: white;
+            background: transparent;
           }
           .asset-thumbnail-placeholder {
             width: 24px;
@@ -542,7 +542,7 @@ export class XCAssetsViewer {
           .pdf-preview-canvas {
             border: 1px solid var(--vscode-panel-border);
             border-radius: 4px;
-            background: white;
+            background: transparent;
             max-width: 100%;
             height: auto;
           }
@@ -746,7 +746,14 @@ export class XCAssetsViewer {
               const context = canvas.getContext('2d');
               canvas.height = viewport.height;
               canvas.width = viewport.width;
-              await page.render({ canvasContext: context, viewport }).promise;
+              
+              var renderContext = {
+                canvasContext: context,
+                background: 'rgba(0,0,0,0)',
+                viewport: viewport
+              };
+
+              await page.render(renderContext).promise;
               return true;
             } catch (error) {
               console.error('PDF render error:', error);
