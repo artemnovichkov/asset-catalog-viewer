@@ -42,11 +42,24 @@ export class XCAssetsViewer {
     return catalog;
   }
 
-  private async parseDirectory(dirPath: string): Promise<AssetItem[]> {
+  private async parseDirectory(dirPath: string, depth: number = 0, rootPath?: string): Promise<AssetItem[]> {
+    if (depth > 10) {
+      console.warn(`Max depth exceeded: ${dirPath}`);
+      return [];
+    }
+
+    const root = rootPath || dirPath;
     const items: AssetItem[] = [];
-    const entries = await fs.promises.readdir(dirPath, {
-      withFileTypes: true,
-    });
+
+    let entries;
+    try {
+      entries = await fs.promises.readdir(dirPath, {
+        withFileTypes: true,
+      });
+    } catch (error) {
+      vscode.window.showErrorMessage(`Cannot read directory: ${dirPath}`);
+      return [];
+    }
 
     for (const entry of entries) {
       if (!entry.isDirectory()) {
@@ -59,10 +72,19 @@ export class XCAssetsViewer {
       }
 
       const entryPath = path.join(dirPath, entry.name);
+      const resolved = path.resolve(entryPath);
+
+      // Prevent path traversal via symlinks
+      if (!resolved.startsWith(path.resolve(root))) {
+        console.warn(`Skipping path outside catalog: ${resolved}`);
+        continue;
+      }
 
       if (entry.name.endsWith('.imageset')) {
         const imageSet = await this.parseImageSet(entryPath);
-        if (imageSet) {
+        if (!imageSet) {
+          console.warn(`Failed to parse imageset: ${entryPath}`);
+        } else {
           items.push({
             type: 'imageset',
             name: imageSet.name,
@@ -72,7 +94,9 @@ export class XCAssetsViewer {
         }
       } else if (entry.name.endsWith('.appiconset')) {
         const appIconSet = await this.parseAppIconSet(entryPath);
-        if (appIconSet) {
+        if (!appIconSet) {
+          console.warn(`Failed to parse appiconset: ${entryPath}`);
+        } else {
           items.push({
             type: 'appiconset',
             name: appIconSet.name,
@@ -82,7 +106,9 @@ export class XCAssetsViewer {
         }
       } else if (entry.name.endsWith('.colorset')) {
         const colorSet = await this.parseColorSet(entryPath);
-        if (colorSet) {
+        if (!colorSet) {
+          console.warn(`Failed to parse colorset: ${entryPath}`);
+        } else {
           items.push({
             type: 'colorset',
             name: colorSet.name,
@@ -92,7 +118,9 @@ export class XCAssetsViewer {
         }
       } else if (entry.name.endsWith('.dataset')) {
         const dataSet = await this.parseDataSet(entryPath);
-        if (dataSet) {
+        if (!dataSet) {
+          console.warn(`Failed to parse dataset: ${entryPath}`);
+        } else {
           items.push({
             type: 'dataset',
             name: dataSet.name,
@@ -102,7 +130,7 @@ export class XCAssetsViewer {
         }
       } else {
         // Regular folder - recurse into it
-        const children = await this.parseDirectory(entryPath);
+        const children = await this.parseDirectory(entryPath, depth + 1, root);
         if (children.length > 0) {
           items.push({
             type: 'folder',
@@ -123,15 +151,29 @@ export class XCAssetsViewer {
       return null;
     }
 
-    const contents = JSON.parse(
-      await fs.promises.readFile(contentsPath, 'utf8')
-    );
+    let contents;
+    try {
+      contents = JSON.parse(
+        await fs.promises.readFile(contentsPath, 'utf8')
+      );
+    } catch (error) {
+      vscode.window.showErrorMessage(
+        `Failed to parse ${path.basename(imageSetPath)}: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+      return null;
+    }
     const images: ImageVariant[] = [];
 
     for (const image of contents.images || []) {
       const imagePath = image.filename
         ? path.join(imageSetPath, image.filename)
         : undefined;
+
+      // Validate file exists
+      if (imagePath && !fs.existsSync(imagePath)) {
+        console.warn(`Referenced image missing: ${imagePath}`);
+      }
+
       images.push({
         filename: image.filename || '',
         scale: image.scale,
@@ -153,15 +195,29 @@ export class XCAssetsViewer {
       return null;
     }
 
-    const contents = JSON.parse(
-      await fs.promises.readFile(contentsPath, 'utf8')
-    );
+    let contents;
+    try {
+      contents = JSON.parse(
+        await fs.promises.readFile(contentsPath, 'utf8')
+      );
+    } catch (error) {
+      vscode.window.showErrorMessage(
+        `Failed to parse ${path.basename(appIconSetPath)}: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+      return null;
+    }
     const icons: AppIconVariant[] = [];
 
     for (const image of contents.images || []) {
       const imagePath = image.filename
         ? path.join(appIconSetPath, image.filename)
         : undefined;
+
+      // Validate file exists
+      if (imagePath && !fs.existsSync(imagePath)) {
+        console.warn(`Referenced image missing: ${imagePath}`);
+      }
+
       icons.push({
         filename: image.filename || '',
         size: image.size,
@@ -184,9 +240,17 @@ export class XCAssetsViewer {
       return null;
     }
 
-    const contents = JSON.parse(
-      await fs.promises.readFile(contentsPath, 'utf8')
-    );
+    let contents;
+    try {
+      contents = JSON.parse(
+        await fs.promises.readFile(contentsPath, 'utf8')
+      );
+    } catch (error) {
+      vscode.window.showErrorMessage(
+        `Failed to parse ${path.basename(colorSetPath)}: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+      return null;
+    }
 
     return {
       name: path.basename(colorSetPath, '.colorset'),
@@ -200,9 +264,17 @@ export class XCAssetsViewer {
       return null;
     }
 
-    const contents = JSON.parse(
-      await fs.promises.readFile(contentsPath, 'utf8')
-    );
+    let contents;
+    try {
+      contents = JSON.parse(
+        await fs.promises.readFile(contentsPath, 'utf8')
+      );
+    } catch (error) {
+      vscode.window.showErrorMessage(
+        `Failed to parse ${path.basename(dataSetPath)}: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+      return null;
+    }
 
     const dataItems: DataItem[] = [];
     for (const item of contents.data || []) {
