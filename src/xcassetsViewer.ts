@@ -340,7 +340,34 @@ export class XCAssetsViewer {
           .left-panel {
             background-color: var(--vscode-sideBar-background);
             border-right: 1px solid var(--vscode-panel-border);
+            display: flex;
+            flex-direction: column;
+          }
+          .asset-list-container {
+            flex: 1;
             overflow-y: auto;
+          }
+          .filter-container {
+            padding: 8px;
+            border-top: 1px solid var(--vscode-panel-border);
+            background-color: var(--vscode-sideBar-background);
+          }
+          .filter-input {
+            width: 100%;
+            padding: 6px 8px;
+            background-color: var(--vscode-input-background);
+            color: var(--vscode-input-foreground);
+            border: 1px solid var(--vscode-input-border);
+            border-radius: 3px;
+            font-size: 13px;
+            font-family: var(--vscode-font-family);
+            outline: none;
+          }
+          .filter-input:focus {
+            border-color: var(--vscode-focusBorder);
+          }
+          .filter-input::placeholder {
+            color: var(--vscode-input-placeholderForeground);
           }
           .asset-list-item {
             padding: 2px 8px;
@@ -659,7 +686,12 @@ export class XCAssetsViewer {
         </style>
       </head>
       <body>
-        <div class="left-panel" id="assetList"></div>
+        <div class="left-panel">
+          <div class="asset-list-container" id="assetList"></div>
+          <div class="filter-container">
+            <input type="text" class="filter-input" id="filterInput" placeholder="Filter" />
+          </div>
+        </div>
         <div class="resizer" id="leftResizer"></div>
         <div class="middle-panel" id="previewPanel">
           <div class="empty-state">No Selection</div>
@@ -684,6 +716,7 @@ export class XCAssetsViewer {
           let allAssets = [];
           let currentSelectedAssetIndex = -1;
           let expandedFolders = new Set();
+          let filterText = '';
 
           // Flatten items into assets array (excluding folders)
           // Add unique ID to each asset for reliable indexing
@@ -702,6 +735,33 @@ export class XCAssetsViewer {
           }
 
           allAssets = flattenItems(assetsData.items);
+
+          // Filter items recursively
+          function filterItems(items, searchText) {
+            if (!searchText) return items;
+
+            const lowerSearch = searchText.toLowerCase();
+
+            return items.filter(item => {
+              if (item.type === 'folder') {
+                // Folder passes if it has any matching children
+                const filteredChildren = filterItems(item.children || [], searchText);
+                return filteredChildren.length > 0;
+              } else {
+                // Asset passes if name matches
+                return item.name.toLowerCase().includes(lowerSearch);
+              }
+            }).map(item => {
+              if (item.type === 'folder') {
+                // Return folder with filtered children
+                return {
+                  ...item,
+                  children: filterItems(item.children || [], searchText)
+                };
+              }
+              return item;
+            });
+          }
 
           // Resizer functionality
           let leftWidth = 250;
@@ -817,6 +877,9 @@ export class XCAssetsViewer {
           async function renderAssetList() {
             const listEl = document.getElementById('assetList');
 
+            // Apply filter
+            const filteredItems = filterItems(assetsData.items, filterText);
+
             function renderItems(items, depth = 0, parentPath = '') {
               let html = '';
               items.forEach((item, itemIdx) => {
@@ -883,7 +946,7 @@ export class XCAssetsViewer {
               return html;
             }
 
-            listEl.innerHTML = renderItems(assetsData.items);
+            listEl.innerHTML = renderItems(filteredItems);
 
             // Render PDF thumbnails
             const pdfCanvases = listEl.querySelectorAll('canvas[data-pdf-url]');
@@ -2075,6 +2138,21 @@ export class XCAssetsViewer {
                 vscode.postMessage({ command: 'showInFinder', filePath: contextMenuTargetPath });
               }
               contextMenu.style.display = 'none';
+            });
+
+            // Filter input handler
+            const filterInput = document.getElementById('filterInput');
+            filterInput.addEventListener('input', (e) => {
+              filterText = e.target.value;
+              renderAssetList().then(() => {
+                // Re-apply selection after filter
+                if (currentSelectedAssetIndex >= 0) {
+                  document.querySelectorAll('.asset-list-item').forEach((item) => {
+                    const itemIndex = item.dataset.index;
+                    item.classList.toggle('selected', itemIndex !== undefined && parseInt(itemIndex) === currentSelectedAssetIndex);
+                  });
+                }
+              });
             });
           })();
         </script>
