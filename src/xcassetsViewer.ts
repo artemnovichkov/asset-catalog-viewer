@@ -160,6 +160,7 @@ export class XCAssetsViewer {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>${catalog.name}</title>
+        <link rel="stylesheet" href="https://unpkg.com/@vscode/codicons@latest/dist/codicon.css">
         <style>
           * {
             margin: 0;
@@ -198,9 +199,15 @@ export class XCAssetsViewer {
             color: var(--vscode-list-activeSelectionForeground);
           }
           .asset-icon {
-            width: 16px;
-            height: 16px;
+            font-size: 16px;
             flex-shrink: 0;
+          }
+          .asset-thumbnail {
+            width: 32px;
+            height: 32px;
+            flex-shrink: 0;
+            object-fit: contain;
+            border-radius: 2px;
           }
 
           /* Middle Panel - Preview */
@@ -235,7 +242,6 @@ export class XCAssetsViewer {
             max-height: 200px;
             border: 1px solid var(--vscode-panel-border);
             border-radius: 4px;
-            background: repeating-conic-gradient(#555 0% 25%, #444 0% 50%) 50% / 20px 20px;
           }
           .color-preview {
             width: 120px;
@@ -313,9 +319,15 @@ export class XCAssetsViewer {
           function renderAssetList() {
             const listEl = document.getElementById('assetList');
             listEl.innerHTML = allAssets.map((asset, idx) => {
-              const icon = asset.type === 'image' ? '🖼️' : asset.type === 'color' ? '🎨' : '📦';
+              let iconHtml = '';
+              if (asset.type === 'image' && asset.images.length > 0) {
+                iconHtml = \`<img src="\${asset.images[0].uri}" class="asset-thumbnail" alt="\${asset.name}" />\`;
+              } else {
+                const iconClass = asset.type === 'color' ? 'codicon-symbol-color' : 'codicon-database';
+                iconHtml = \`<i class="codicon \${iconClass} asset-icon"></i>\`;
+              }
               return \`<div class="asset-list-item" data-index="\${idx}">
-                <span class="asset-icon">\${icon}</span>
+                \${iconHtml}
                 <span>\${asset.name}</span>
               </div>\`;
             }).join('');
