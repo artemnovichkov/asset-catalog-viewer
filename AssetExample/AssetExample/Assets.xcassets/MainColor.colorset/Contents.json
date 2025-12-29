@@ -29,6 +29,150 @@
         }
       },
       "idiom" : "universal"
+    },
+    {
+      "color" : {
+        "color-space" : "srgb",
+        "components" : {
+          "alpha" : "1.000",
+          "blue" : "120",
+          "green" : "152",
+          "red" : "137"
+        }
+      },
+      "idiom" : "iphone"
+    },
+    {
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "dark"
+        }
+      ],
+      "color" : {
+        "color-space" : "srgb",
+        "components" : {
+          "alpha" : "1.000",
+          "blue" : "37",
+          "green" : "39",
+          "red" : "34"
+        }
+      },
+      "idiom" : "iphone"
+    },
+    {
+      "color" : {
+        "color-space" : "srgb",
+        "components" : {
+          "alpha" : "1.000",
+          "blue" : "120",
+          "green" : "152",
+          "red" : "137"
+        }
+      },
+      "idiom" : "car"
+    },
+    {
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "dark"
+        }
+      ],
+      "color" : {
+        "color-space" : "srgb",
+        "components" : {
+          "alpha" : "1.000",
+          "blue" : "37",
+          "green" : "39",
+          "red" : "34"
+        }
+      },
+      "idiom" : "car"
+    },
+    {
+      "color" : {
+        "color-space" : "srgb",
+        "components" : {
+          "alpha" : "1.000",
+          "blue" : "120",
+          "green" : "152",
+          "red" : "137"
+        }
+      },
+      "idiom" : "mac"
+    },
+    {
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "dark"
+        }
+      ],
+      "color" : {
+        "color-space" : "srgb",
+        "components" : {
+          "alpha" : "1.000",
+          "blue" : "37",
+          "green" : "39",
+          "red" : "34"
+        }
+      },
+      "idiom" : "mac"
+    },
+    {
+      "color" : {
+        "color-space" : "srgb",
+        "components" : {
+          "alpha" : "1.000",
+          "blue" : "120",
+          "green" : "152",
+          "red" : "137"
+        }
+      },
+      "idiom" : "vision"
+    },
+    {
+      "color" : {
+        "color-space" : "srgb",
+        "components" : {
+          "alpha" : "1.000",
+          "blue" : "120",
+          "green" : "152",
+          "red" : "137"
+        }
+      },
+      "idiom" : "watch"
+    },
+    {
+      "color" : {
+        "color-space" : "srgb",
+        "components" : {
+          "alpha" : "1.000",
+          "blue" : "120",
+          "green" : "152",
+          "red" : "137"
+        }
+      },
+      "idiom" : "tv"
+    },
+    {
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "dark"
+        }
+      ],
+      "color" : {
+        "color-space" : "srgb",
+        "components" : {
+          "alpha" : "1.000",
+          "blue" : "37",
+          "green" : "39",
+          "red" : "34"
+        }
+      },
+      "idiom" : "tv"
     }
   ],
   "info" : {

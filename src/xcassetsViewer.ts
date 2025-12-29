@@ -527,27 +527,37 @@ export class XCAssetsViewer {
             opacity: 0.5;
           }
           .variant-item {
-            border: 2px solid transparent;
             border-radius: 6px;
-            overflow: hidden;
             cursor: pointer;
+            border: 3px solid transparent;
+            padding: 8px 8px 0 8px;
           }
           .variant-item.selected {
             border-color: var(--vscode-focusBorder);
           }
           .variant-item .color-preview {
-            margin: 4px auto 0 auto;
+            margin: 0 auto;
+          }
+          .variant-item .image-slot {
+            margin: 0;
           }
           .variant-item .preview-label,
           .variant-item .slot-label {
-            margin: 4px 0 0 0;
+            margin: 8px 0 0 0;
             padding: 4px 8px;
+            display: block;
+            width: 100%;
+            box-sizing: border-box;
           }
           .variant-item.selected .preview-label,
           .variant-item.selected .slot-label {
             background-color: var(--vscode-focusBorder);
             color: white;
             font-weight: 600;
+            margin: 8px -11px -3px -11px;
+            padding: 4px 11px;
+            border-radius: 0 0 3px 3px;
+            width: calc(100% + 22px);
           }
           .pdf-preview-canvas {
             border: 1px solid var(--vscode-panel-border);
