@@ -204,9 +204,34 @@ export class XCAssetsViewer {
       await fs.promises.readFile(contentsPath, 'utf8')
     );
 
+    const dataItems: DataItem[] = [];
+    for (const item of contents.data || []) {
+      const dataItem: DataItem = {
+        filename: item.filename || '',
+        idiom: item.idiom || 'universal',
+      };
+
+      if (item.filename) {
+        const filePath = path.join(dataSetPath, item.filename);
+        if (fs.existsSync(filePath)) {
+          dataItem.path = filePath;
+          // Read file content for text-based files
+          try {
+            const content = await fs.promises.readFile(filePath, 'utf8');
+            dataItem.content = content;
+          } catch (e) {
+            // If reading as text fails, it might be binary
+            dataItem.content = undefined;
+          }
+        }
+      }
+
+      dataItems.push(dataItem);
+    }
+
     return {
       name: path.basename(dataSetPath, '.dataset'),
-      data: contents.data || [],
+      data: dataItems,
     };
   }
 
@@ -248,7 +273,11 @@ export class XCAssetsViewer {
             type: 'data',
             name: item.dataSet.name,
             path: item.path,
-            data: item.dataSet.data
+            data: item.dataSet.data.map(d => ({
+              ...d,
+              uri: d.path ? webview.asWebviewUri(vscode.Uri.file(d.path)).toString() : '',
+              fsPath: d.path
+            }))
           };
         } else if (item.type === 'appiconset' && item.appIconSet) {
           return {
@@ -547,6 +576,27 @@ export class XCAssetsViewer {
             border-radius: 3px;
             margin-bottom: 8px;
             font-size: 12px;
+          }
+          .property-value-with-button {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+          }
+          .finder-button {
+            padding: 4px 8px;
+            background-color: var(--vscode-button-secondaryBackground);
+            color: var(--vscode-button-secondaryForeground);
+            border: none;
+            border-radius: 2px;
+            cursor: pointer;
+            font-size: 11px;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+          }
+          .finder-button:hover {
+            background-color: var(--vscode-button-secondaryHoverBackground);
           }
           .property-list {
             list-style: none;
@@ -1196,11 +1246,55 @@ export class XCAssetsViewer {
                 });
               });
             } else if (asset.type === 'data') {
+              // Show file content if available
+              let contentHtml = '';
+              if (asset.data.length > 0) {
+                const dataItem = asset.data[0];
+                if (dataItem.content) {
+                  // Escape HTML and show as code
+                  const escapedContent = dataItem.content
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;');
+
+                  contentHtml = \`
+                    <div style="width: 100%; max-width: 800px;">
+                      <div style="margin-bottom: 12px; font-size: 13px; color: var(--vscode-descriptionForeground);">
+                        File: \${dataItem.filename}
+                      </div>
+                      <pre style="
+                        background-color: var(--vscode-textCodeBlock-background);
+                        border: 1px solid var(--vscode-panel-border);
+                        border-radius: 4px;
+                        padding: 16px;
+                        overflow: auto;
+                        max-height: 600px;
+                        font-family: var(--vscode-editor-font-family);
+                        font-size: 13px;
+                        line-height: 1.5;
+                        text-align: left;
+                      ">\${escapedContent}</pre>
+                    </div>
+                  \`;
+                } else if (dataItem.filename) {
+                  contentHtml = \`
+                    <div style="color: var(--vscode-descriptionForeground);">
+                      File: \${dataItem.filename}<br>
+                      <em>(Binary or unreadable content)</em>
+                    </div>
+                  \`;
+                } else {
+                  contentHtml = \`<div class="preview-label">\${asset.data.length} data items</div>\`;
+                }
+              } else {
+                contentHtml = \`<div class="preview-label">No data items</div>\`;
+              }
+
               panel.innerHTML = \`
                 <div class="preview-container">
                   <div class="preview-title">\${asset.name}</div>
-                  <div class="preview-content">
-                    <div class="preview-label">\${asset.data.length} data items</div>
+                  <div class="preview-content" style="width: 100%;">
+                    \${contentHtml}
                   </div>
                 </div>
               \`;
@@ -1293,7 +1387,12 @@ export class XCAssetsViewer {
                 <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 12px;">
                   Name
                 </div>
-                <div class="property-value">\${asset.name}</div>
+                <div class="property-value-with-button">
+                  <div class="property-value" style="flex: 1; margin-bottom: 0;">\${asset.name}</div>
+                  <button class="finder-button" data-path="\${asset.path}">
+                    <i class="codicon codicon-folder-opened"></i>
+                  </button>
+                </div>
               </div>
               <div class="property-section">
                 <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">
@@ -1355,6 +1454,15 @@ export class XCAssetsViewer {
                 \${componentsHtml}
               </div>
             \`;
+
+            // Add click handler for finder button
+            panel.querySelector('.finder-button').addEventListener('click', (e) => {
+              const button = e.currentTarget;
+              const path = button.dataset.path;
+              if (path) {
+                vscode.postMessage({ command: 'showInFinder', filePath: path });
+              }
+            });
           }
 
           // Render app icon variant properties
@@ -1396,7 +1504,12 @@ export class XCAssetsViewer {
             panel.innerHTML = \`
               <div class="property-section">
                 <div class="property-title">Name</div>
-                <div class="property-value">\${asset.name}</div>
+                <div class="property-value-with-button">
+                  <div class="property-value" style="flex: 1; margin-bottom: 0;">\${asset.name}</div>
+                  <button class="finder-button" data-path="\${asset.path}">
+                    <i class="codicon codicon-folder-opened"></i>
+                  </button>
+                </div>
               </div>
               <div class="property-section">
                 <div class="property-title">Type</div>
@@ -1428,6 +1541,15 @@ export class XCAssetsViewer {
                 <div class="property-value">\${imageSizeText}</div>
               </div>
             \`;
+
+            // Add click handler for finder button
+            panel.querySelector('.finder-button').addEventListener('click', (e) => {
+              const button = e.currentTarget;
+              const path = button.dataset.path;
+              if (path) {
+                vscode.postMessage({ command: 'showInFinder', filePath: path });
+              }
+            });
           }
 
           // Render image variant properties
@@ -1492,7 +1614,12 @@ export class XCAssetsViewer {
             panel.innerHTML = \`
               <div class="property-section">
                 <div class="property-title">Name</div>
-                <div class="property-value">\${asset.name}</div>
+                <div class="property-value-with-button">
+                  <div class="property-value" style="flex: 1; margin-bottom: 0;">\${asset.name}</div>
+                  <button class="finder-button" data-path="\${asset.path}">
+                    <i class="codicon codicon-folder-opened"></i>
+                  </button>
+                </div>
               </div>
               <div class="property-section">
                 <div class="property-title">Type</div>
@@ -1531,6 +1658,15 @@ export class XCAssetsViewer {
                 <div class="property-value">sRGB IEC61966-2.1</div>
               </div>
             \`;
+
+            // Add click handler for finder button
+            panel.querySelector('.finder-button').addEventListener('click', (e) => {
+              const button = e.currentTarget;
+              const path = button.dataset.path;
+              if (path) {
+                vscode.postMessage({ command: 'showInFinder', filePath: path });
+              }
+            });
           }
 
           // Render properties
@@ -1574,7 +1710,12 @@ export class XCAssetsViewer {
               panel.innerHTML = \`
                 <div class="property-section">
                   <div class="property-title">Name</div>
-                  <div class="property-value">\${asset.name}</div>
+                  <div class="property-value-with-button">
+                    <div class="property-value" style="flex: 1; margin-bottom: 0;">\${asset.name}</div>
+                    <button class="finder-button" data-path="\${asset.path}">
+                      <i class="codicon codicon-folder-opened"></i>
+                    </button>
+                  </div>
                 </div>
                 <div class="property-section">
                   <div class="property-title">Type</div>
@@ -1594,6 +1735,15 @@ export class XCAssetsViewer {
                   <div class="property-value">\${scales}</div>
                 </div>
               \`;
+
+              // Add click handler for finder button
+              panel.querySelector('.finder-button').addEventListener('click', (e) => {
+                const button = e.currentTarget;
+                const path = button.dataset.path;
+                if (path) {
+                  vscode.postMessage({ command: 'showInFinder', filePath: path });
+                }
+              });
             } else if (asset.type === 'appicon') {
               // Collect platforms and sizes
               const platforms = new Set();
@@ -1614,7 +1764,12 @@ export class XCAssetsViewer {
               panel.innerHTML = \`
                 <div class="property-section">
                   <div class="property-title">Name</div>
-                  <div class="property-value">\${asset.name}</div>
+                  <div class="property-value-with-button">
+                    <div class="property-value" style="flex: 1; margin-bottom: 0;">\${asset.name}</div>
+                    <button class="finder-button" data-path="\${asset.path}">
+                      <i class="codicon codicon-folder-opened"></i>
+                    </button>
+                  </div>
                 </div>
                 <div class="property-section">
                   <div class="property-title">Type</div>
@@ -1631,6 +1786,15 @@ export class XCAssetsViewer {
                   <div class="property-value">\${sizesList}</div>
                 </div>
               \`;
+
+              // Add click handler for finder button
+              panel.querySelector('.finder-button').addEventListener('click', (e) => {
+                const button = e.currentTarget;
+                const path = button.dataset.path;
+                if (path) {
+                  vscode.postMessage({ command: 'showInFinder', filePath: path });
+                }
+              });
             } else if (asset.type === 'color') {
               // Collect unique idioms and appearances for general properties
               const idioms = new Set();
@@ -1695,7 +1859,12 @@ export class XCAssetsViewer {
                   <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 12px;">
                     Name
                   </div>
-                  <div class="property-value">\${asset.name}</div>
+                  <div class="property-value-with-button">
+                    <div class="property-value" style="flex: 1; margin-bottom: 0;">\${asset.name}</div>
+                    <button class="finder-button" data-path="\${asset.path}">
+                      <i class="codicon codicon-folder-opened"></i>
+                    </button>
+                  </div>
                 </div>
                 <div class="property-section">
                   <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">
@@ -1719,21 +1888,36 @@ export class XCAssetsViewer {
                   <div class="property-value">\${gamut}</div>
                 </div>
               \`;
+
+              // Add click handler for finder button
+              panel.querySelector('.finder-button').addEventListener('click', (e) => {
+                const button = e.currentTarget;
+                const path = button.dataset.path;
+                if (path) {
+                  vscode.postMessage({ command: 'showInFinder', filePath: path });
+                }
+              });
             } else if (asset.type === 'data') {
               panel.innerHTML = \`
                 <div class="property-section">
                   <div class="property-title">Name</div>
-                  <div class="property-value">\${asset.name}</div>
-                </div>
-                <div class="property-section">
-                  <div class="property-title">Type</div>
-                  <div class="property-value">Data Set</div>
-                </div>
-                <div class="property-section">
-                  <div class="property-title">Items</div>
-                  <div class="property-value">\${asset.data.length}</div>
+                  <div class="property-value-with-button">
+                    <div class="property-value" style="flex: 1; margin-bottom: 0;">\${asset.name}</div>
+                    <button class="finder-button" data-path="\${asset.path}">
+                      <i class="codicon codicon-folder-opened"></i>
+                    </button>
+                  </div>
                 </div>
               \`;
+
+              // Add click handler for finder button
+              panel.querySelector('.finder-button').addEventListener('click', (e) => {
+                const button = e.currentTarget;
+                const path = button.dataset.path;
+                if (path) {
+                  vscode.postMessage({ command: 'showInFinder', filePath: path });
+                }
+              });
             }
           }
 
@@ -1896,7 +2080,14 @@ interface ColorSet {
 
 interface DataSet {
   name: string;
-  data: any[];
+  data: DataItem[];
+}
+
+interface DataItem {
+  filename: string;
+  idiom: string;
+  path?: string;
+  content?: string;
 }
 
 interface AppIconSet {
