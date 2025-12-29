@@ -27,12 +27,15 @@ export class XCAssetsViewer {
   private async parseXCAssets(xcassetsPath: string): Promise<AssetCatalog> {
     const catalog: AssetCatalog = {
       name: path.basename(xcassetsPath),
-      imageSets: [],
-      colorSets: [],
-      dataSets: [],
+      items: await this.parseDirectory(xcassetsPath),
     };
 
-    const entries = await fs.promises.readdir(xcassetsPath, {
+    return catalog;
+  }
+
+  private async parseDirectory(dirPath: string): Promise<AssetItem[]> {
+    const items: AssetItem[] = [];
+    const entries = await fs.promises.readdir(dirPath, {
       withFileTypes: true,
     });
 
@@ -41,27 +44,58 @@ export class XCAssetsViewer {
         continue;
       }
 
-      const entryPath = path.join(xcassetsPath, entry.name);
+      // Skip hidden/system files
+      if (entry.name.startsWith('.')) {
+        continue;
+      }
+
+      const entryPath = path.join(dirPath, entry.name);
 
       if (entry.name.endsWith('.imageset')) {
         const imageSet = await this.parseImageSet(entryPath);
         if (imageSet) {
-          catalog.imageSets.push(imageSet);
+          items.push({
+            type: 'imageset',
+            name: imageSet.name,
+            path: entryPath,
+            imageSet,
+          });
         }
       } else if (entry.name.endsWith('.colorset')) {
         const colorSet = await this.parseColorSet(entryPath);
         if (colorSet) {
-          catalog.colorSets.push(colorSet);
+          items.push({
+            type: 'colorset',
+            name: colorSet.name,
+            path: entryPath,
+            colorSet,
+          });
         }
       } else if (entry.name.endsWith('.dataset')) {
         const dataSet = await this.parseDataSet(entryPath);
         if (dataSet) {
-          catalog.dataSets.push(dataSet);
+          items.push({
+            type: 'dataset',
+            name: dataSet.name,
+            path: entryPath,
+            dataSet,
+          });
+        }
+      } else {
+        // Regular folder - recurse into it
+        const children = await this.parseDirectory(entryPath);
+        if (children.length > 0) {
+          items.push({
+            type: 'folder',
+            name: entry.name,
+            path: entryPath,
+            children,
+          });
         }
       }
     }
 
-    return catalog;
+    return items;
   }
 
   private async parseImageSet(imageSetPath: string): Promise<ImageSet | null> {
@@ -131,26 +165,43 @@ export class XCAssetsViewer {
     catalog: AssetCatalog,
     xcassetsPath: string
   ): string {
-    // Prepare asset data with image URIs
+    // Convert items to webview format with URIs
+    const convertItems = (items: AssetItem[]): any[] => {
+      return items.map(item => {
+        if (item.type === 'folder') {
+          return {
+            type: 'folder',
+            name: item.name,
+            children: item.children ? convertItems(item.children) : []
+          };
+        } else if (item.type === 'imageset' && item.imageSet) {
+          return {
+            type: 'image',
+            name: item.imageSet.name,
+            images: item.imageSet.images.map(img => ({
+              ...img,
+              uri: img.path ? webview.asWebviewUri(vscode.Uri.file(img.path)).toString() : ''
+            }))
+          };
+        } else if (item.type === 'colorset' && item.colorSet) {
+          return {
+            type: 'color',
+            name: item.colorSet.name,
+            colors: item.colorSet.colors
+          };
+        } else if (item.type === 'dataset' && item.dataSet) {
+          return {
+            type: 'data',
+            name: item.dataSet.name,
+            data: item.dataSet.data
+          };
+        }
+        return null;
+      }).filter(item => item !== null);
+    };
+
     const assetsData = {
-      imageSets: catalog.imageSets.map(imageSet => ({
-        name: imageSet.name,
-        type: 'image',
-        images: imageSet.images.map(img => ({
-          ...img,
-          uri: img.path ? webview.asWebviewUri(vscode.Uri.file(img.path)).toString() : ''
-        }))
-      })),
-      colorSets: catalog.colorSets.map(colorSet => ({
-        name: colorSet.name,
-        type: 'color',
-        colors: colorSet.colors
-      })),
-      dataSets: catalog.dataSets.map(dataSet => ({
-        name: dataSet.name,
-        type: 'data',
-        data: dataSet.data
-      }))
+      items: convertItems(catalog.items)
     };
 
     const assetsJson = JSON.stringify(assetsData);
@@ -197,12 +248,12 @@ export class XCAssetsViewer {
             overflow-y: auto;
           }
           .asset-list-item {
-            padding: 8px 12px;
+            padding: 4px 8px;
             cursor: pointer;
-            border-bottom: 1px solid var(--vscode-panel-border);
             display: flex;
             align-items: center;
             gap: 8px;
+            user-select: none;
           }
           .asset-list-item:hover {
             background-color: var(--vscode-list-hoverBackground);
@@ -210,6 +261,24 @@ export class XCAssetsViewer {
           .asset-list-item.selected {
             background-color: var(--vscode-list-activeSelectionBackground);
             color: var(--vscode-list-activeSelectionForeground);
+          }
+          .asset-list-item.folder {
+            font-weight: 500;
+          }
+          .folder-chevron {
+            font-size: 12px;
+            transition: transform 0.2s;
+            flex-shrink: 0;
+            width: 16px;
+          }
+          .folder-chevron.expanded {
+            transform: rotate(90deg);
+          }
+          .asset-list-item.collapsed + .folder-children {
+            display: none;
+          }
+          .folder-children {
+            display: block;
           }
           .asset-icon {
             font-size: 16px;
@@ -423,13 +492,25 @@ export class XCAssetsViewer {
           const assetsData = ${assetsJson};
           let allAssets = [];
           let currentSelectedAssetIndex = -1;
+          let expandedFolders = new Set();
 
-          // Combine all assets
-          allAssets = [
-            ...assetsData.imageSets,
-            ...assetsData.colorSets,
-            ...assetsData.dataSets
-          ];
+          // Flatten items into assets array (excluding folders)
+          // Add unique ID to each asset for reliable indexing
+          function flattenItems(items, parentPath = '') {
+            const assets = [];
+            items.forEach(item => {
+              if (item.type === 'folder') {
+                const folderPath = parentPath ? \`\${parentPath}/\${item.name}\` : item.name;
+                assets.push(...flattenItems(item.children || [], folderPath));
+              } else {
+                const itemPath = parentPath ? \`\${parentPath}/\${item.name}\` : item.name;
+                assets.push({ ...item, _path: itemPath });
+              }
+            });
+            return assets;
+          }
+
+          allAssets = flattenItems(assetsData.items);
 
           // Resizer functionality
           let leftWidth = 250;
@@ -502,35 +583,66 @@ export class XCAssetsViewer {
             }
           }
 
-          // Render asset list
+          // Render asset list with hierarchy
           async function renderAssetList() {
             const listEl = document.getElementById('assetList');
-            listEl.innerHTML = allAssets.map((asset, idx) => {
-              let iconHtml = '';
-              if (asset.type === 'image' && asset.images.length > 0) {
-                const firstImage = asset.images.find(img => img.filename);
-                if (firstImage) {
-                  const isPdf = firstImage.filename.toLowerCase().endsWith('.pdf');
-                  if (isPdf) {
-                    iconHtml = \`<canvas class="asset-thumbnail-canvas" data-pdf-url="\${firstImage.uri}" data-idx="\${idx}"></canvas>\`;
-                  } else {
-                    iconHtml = \`<img src="\${firstImage.uri}" class="asset-thumbnail" alt="\${asset.name}" />\`;
+
+            function renderItems(items, depth = 0, parentPath = '') {
+              let html = '';
+              items.forEach((item, itemIdx) => {
+                const itemPath = parentPath ? \`\${parentPath}/\${item.name}\` : item.name;
+                const indent = depth * 16;
+
+                if (item.type === 'folder') {
+                  const isExpanded = expandedFolders.has(itemPath);
+                  const chevronClass = isExpanded ? 'expanded' : '';
+                  html += \`
+                    <div class="asset-list-item folder" data-folder-path="\${itemPath}" style="padding-left: \${indent + 8}px;">
+                      <i class="codicon codicon-chevron-right folder-chevron \${chevronClass}"></i>
+                      <i class="codicon codicon-folder asset-icon"></i>
+                      <span>\${item.name}</span>
+                    </div>
+                  \`;
+                  if (isExpanded && item.children && item.children.length > 0) {
+                    html += \`<div class="folder-children" data-parent-path="\${itemPath}">\`;
+                    html += renderItems(item.children, depth + 1, itemPath);
+                    html += \`</div>\`;
                   }
                 } else {
-                  iconHtml = \`<i class="codicon codicon-file-media asset-icon"></i>\`;
+                  // Find index in flattened allAssets array using path
+                  const assetIndex = allAssets.findIndex(a => a._path === itemPath);
+
+                  let iconHtml = '';
+                  if (item.type === 'image' && item.images.length > 0) {
+                    const firstImage = item.images.find(img => img.filename);
+                    if (firstImage) {
+                      const isPdf = firstImage.filename.toLowerCase().endsWith('.pdf');
+                      if (isPdf) {
+                        iconHtml = \`<canvas class="asset-thumbnail-canvas" data-pdf-url="\${firstImage.uri}" data-idx="\${assetIndex}"></canvas>\`;
+                      } else {
+                        iconHtml = \`<img src="\${firstImage.uri}" class="asset-thumbnail" alt="\${item.name}" />\`;
+                      }
+                    } else {
+                      iconHtml = \`<i class="codicon codicon-file-media asset-icon"></i>\`;
+                    }
+                  } else if (item.type === 'color') {
+                    const color = item.colors[0] || {};
+                    const colorValue = getColorValue(color.color);
+                    iconHtml = \`<div class="asset-thumbnail" style="background-color: \${colorValue}; border: 1px solid var(--vscode-panel-border);"></div>\`;
+                  } else {
+                    iconHtml = \`<i class="codicon codicon-database asset-icon"></i>\`;
+                  }
+
+                  html += \`<div class="asset-list-item" data-index="\${assetIndex}" style="padding-left: \${indent + 24 + 8}px;">
+                    \${iconHtml}
+                    <span>\${item.name}</span>
+                  </div>\`;
                 }
-              } else if (asset.type === 'color') {
-                const color = asset.colors[0] || {};
-                const colorValue = getColorValue(color.color);
-                iconHtml = \`<div class="asset-thumbnail" style="background-color: \${colorValue}; border: 1px solid var(--vscode-panel-border);"></div>\`;
-              } else {
-                iconHtml = \`<i class="codicon codicon-database asset-icon"></i>\`;
-              }
-              return \`<div class="asset-list-item" data-index="\${idx}">
-                \${iconHtml}
-                <span>\${asset.name}</span>
-              </div>\`;
-            }).join('');
+              });
+              return html;
+            }
+
+            listEl.innerHTML = renderItems(assetsData.items);
 
             // Render PDF thumbnails
             const pdfCanvases = listEl.querySelectorAll('canvas[data-pdf-url]');
@@ -539,8 +651,17 @@ export class XCAssetsViewer {
               await renderPdfToCanvas(pdfUrl, canvas, 0.2);
             }
 
-            // Add click handlers
-            listEl.querySelectorAll('.asset-list-item').forEach(item => {
+            // Add click handlers for folders
+            listEl.querySelectorAll('.asset-list-item.folder').forEach(item => {
+              item.addEventListener('click', (e) => {
+                const folderPath = item.dataset.folderPath;
+                toggleFolder(folderPath);
+                e.stopPropagation();
+              });
+            });
+
+            // Add click handlers for assets
+            listEl.querySelectorAll('.asset-list-item:not(.folder)').forEach(item => {
               item.addEventListener('click', () => {
                 const idx = parseInt(item.dataset.index);
                 selectAsset(idx);
@@ -548,12 +669,31 @@ export class XCAssetsViewer {
             });
           }
 
+          // Toggle folder expand/collapse
+          function toggleFolder(folderPath) {
+            if (expandedFolders.has(folderPath)) {
+              expandedFolders.delete(folderPath);
+            } else {
+              expandedFolders.add(folderPath);
+            }
+            renderAssetList().then(() => {
+              // Re-apply selection after render
+              if (currentSelectedAssetIndex >= 0) {
+                document.querySelectorAll('.asset-list-item').forEach((item) => {
+                  const itemIndex = item.dataset.index;
+                  item.classList.toggle('selected', itemIndex !== undefined && parseInt(itemIndex) === currentSelectedAssetIndex);
+                });
+              }
+            });
+          }
+
           // Select asset
           function selectAsset(index) {
             currentSelectedAssetIndex = index;
-            // Update selection
-            document.querySelectorAll('.asset-list-item').forEach((item, idx) => {
-              item.classList.toggle('selected', idx === index);
+            // Update selection - use data-index attribute, not DOM order
+            document.querySelectorAll('.asset-list-item').forEach((item) => {
+              const itemIndex = item.dataset.index;
+              item.classList.toggle('selected', itemIndex !== undefined && parseInt(itemIndex) === index);
             });
 
             const asset = allAssets[index];
@@ -1344,9 +1484,17 @@ export class XCAssetsViewer {
 
 interface AssetCatalog {
   name: string;
-  imageSets: ImageSet[];
-  colorSets: ColorSet[];
-  dataSets: DataSet[];
+  items: AssetItem[];
+}
+
+interface AssetItem {
+  type: 'folder' | 'imageset' | 'colorset' | 'dataset';
+  name: string;
+  path?: string;
+  imageSet?: ImageSet;
+  colorSet?: ColorSet;
+  dataSet?: DataSet;
+  children?: AssetItem[];
 }
 
 interface ImageSet {
