@@ -409,7 +409,7 @@ export class XCAssetsViewer {
         <div class="left-panel" id="assetList"></div>
         <div class="resizer" id="leftResizer"></div>
         <div class="middle-panel" id="previewPanel">
-          <div class="empty-state">Select an asset to preview</div>
+          <div class="empty-state">No Selection</div>
         </div>
         <div class="resizer" id="rightResizer"></div>
         <div class="right-panel" id="propertiesPanel">
@@ -559,6 +559,18 @@ export class XCAssetsViewer {
             const asset = allAssets[index];
             renderPreview(asset);
             renderProperties(asset);
+          }
+
+          // Deselect asset
+          function deselectAsset() {
+            currentSelectedAssetIndex = -1;
+            // Remove selection from all items
+            document.querySelectorAll('.asset-list-item').forEach(item => {
+              item.classList.remove('selected');
+            });
+            // Show empty state
+            document.getElementById('previewPanel').innerHTML = '<div class="empty-state">No Selection</div>';
+            document.getElementById('propertiesPanel').innerHTML = '<div class="empty-state">No asset selected</div>';
           }
 
           // Deselect variant (image/color) within current asset
@@ -1279,9 +1291,16 @@ export class XCAssetsViewer {
           (async () => {
             initResizers();
             await renderAssetList();
-            if (allAssets.length > 0) {
-              selectAsset(0);
-            }
+
+            // Add click handler to left panel to deselect on empty area click
+            const assetList = document.getElementById('assetList');
+            assetList.addEventListener('click', (e) => {
+              const target = e.target;
+              // Check if clicked directly on the list container (empty space)
+              if (target === assetList) {
+                deselectAsset();
+              }
+            });
 
             // Add click handler to deselect variant on empty area click
             const previewPanel = document.getElementById('previewPanel');
