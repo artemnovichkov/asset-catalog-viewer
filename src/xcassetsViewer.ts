@@ -248,11 +248,12 @@ export class XCAssetsViewer {
             overflow-y: auto;
           }
           .asset-list-item {
-            padding: 4px 8px;
+            padding: 2px 8px;
+            height: 28px;
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
             user-select: none;
           }
           .asset-list-item:hover {
@@ -281,19 +282,19 @@ export class XCAssetsViewer {
             display: block;
           }
           .asset-icon {
-            font-size: 16px;
+            font-size: 14px;
             flex-shrink: 0;
           }
           .asset-thumbnail {
-            width: 32px;
-            height: 32px;
+            width: 24px;
+            height: 24px;
             flex-shrink: 0;
             object-fit: contain;
             border-radius: 2px;
           }
           .asset-thumbnail-canvas {
-            width: 32px;
-            height: 32px;
+            width: 24px;
+            height: 24px;
             flex-shrink: 0;
             border-radius: 2px;
             background: white;
