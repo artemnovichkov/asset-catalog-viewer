@@ -1,14 +1,47 @@
 {
-  "name": "xcassets-viewer",
+  "name": "asset-catalog-viewer",
   "displayName": "Asset Catalog Viewer",
   "description": "View .xcassets content like in Xcode",
   "version": "0.1.0",
+  "publisher": "artemnovichkov",
+  "author": {
+    "name": "Artem Novichkov",
+    "url": "https://artemnovichkov.com"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/artemnovichkov/asset-catalog-viewer.git"
+  },
   "engines": {
     "vscode": "^1.85.0"
   },
   "categories": [
-    "Other"
+    "Other",
+    "Visualization"
   ],
+  "keywords": [
+    "xcassets",
+    "asset catalog",
+    "xcode",
+    "ios",
+    "macos",
+    "imageset",
+    "colorset",
+    "appicon",
+    "assets",
+    "preview",
+    "viewer"
+  ],
+  "icon": "icon.png",
+  "galleryBanner": {
+    "color": "#1e1e1e",
+    "theme": "dark"
+  },
+  "homepage": "https://github.com/artemnovichkov/asset-catalog-viewer",
+  "bugs": {
+    "url": "https://github.com/artemnovichkov/asset-catalog-viewer/issues"
+  },
   "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
@@ -29,9 +62,9 @@
     },
     "iconThemes": [
       {
-        "id": "xcassets-icons",
-        "label": "XCAssets Icons",
-        "path": "./icons/xcassets-icon-theme.json"
+        "id": "asset-catalog-viewer-icons",
+        "label": "Asset Catalog Viewer Icons",
+        "path": "./icons/asset-catalog-viewer-icons-theme.json"
       }
     ]
   },
