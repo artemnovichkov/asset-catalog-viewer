@@ -32,10 +32,22 @@ export class XCAssetsViewer {
 
     panel.webview.onDidReceiveMessage(message => {
       const { spawn } = require('child_process');
-      if (message.command === 'quicklook' && message.filePath) {
-        spawn('qlmanage', ['-p', message.filePath], { detached: true, stdio: 'ignore' }).unref();
-      } else if (message.command === 'showInFinder' && message.filePath) {
-        spawn('open', ['-R', message.filePath], { detached: true, stdio: 'ignore' }).unref();
+
+      // Validate path
+      if (!message.filePath) {
+        return;
+      }
+      const resolved = path.resolve(message.filePath);
+      const catalogResolved = path.resolve(xcassetsPath);
+      if (!resolved.startsWith(catalogResolved)) {
+        vscode.window.showErrorMessage('Invalid file path');
+        return;
+      }
+
+      if (message.command === 'quicklook') {
+        spawn('qlmanage', ['-p', resolved], { detached: true, stdio: 'ignore' }).unref();
+      } else if (message.command === 'showInFinder') {
+        spawn('open', ['-R', resolved], { detached: true, stdio: 'ignore' }).unref();
       }
     });
   }
