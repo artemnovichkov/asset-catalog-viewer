@@ -362,7 +362,7 @@ export class XCAssetsViewer {
             font-weight: 500;
           }
           .folder-chevron {
-            font-size: 12px;
+            font-size: 16px;
             transition: transform 0.2s;
             flex-shrink: 0;
             width: 16px;
@@ -377,8 +377,10 @@ export class XCAssetsViewer {
             display: block;
           }
           .asset-icon {
-            font-size: 14px;
+            font-size: 20px;
             flex-shrink: 0;
+            width: 24px;
+            text-align: center;
           }
           .asset-thumbnail {
             width: 24px;
@@ -396,10 +398,9 @@ export class XCAssetsViewer {
             justify-content: center;
           }
           .asset-thumbnail-canvas {
-            max-width: 24px;
-            max-height: 24px;
-            width: auto;
-            height: auto;
+            width: 24px;
+            height: 24px;
+            object-fit: contain;
             border-radius: 2px;
             background: transparent;
           }
