@@ -649,15 +649,20 @@ export class XCAssetsViewer {
                   const luminosity = appearances.find(a => a.appearance === 'luminosity');
                   const contrast = appearances.find(a => a.appearance === 'contrast');
 
-                  let label1 = luminosity?.value === 'dark' ? 'Dark' : 'Any Luminosity';
-                  let label2 = contrast?.value === 'high' ? 'High Contrast' : 'Normal Contrast';
+                  let label1 = luminosity?.value === 'dark' ? 'Dark' : 'Any Appearance';
+
+                  // Only show contrast if it's high
+                  const labelParts = [label1];
+                  if (contrast?.value === 'high') {
+                    labelParts.push('High Contrast');
+                  }
 
                   // Show "Mac Catalyst Scaled" prefix for mac-catalyst items
                   if (colorItem.subtype === 'mac-catalyst') {
-                    label1 = 'Mac Catalyst Scaled<br>' + label1;
+                    labelParts[0] = 'Mac Catalyst Scaled<br>' + labelParts[0];
                   }
 
-                  const label = \`\${label1}<br>\${label2}\`;
+                  const label = labelParts.join('<br>');
 
                   return \`
                     <div class="preview-item color-variant-item" data-color-index="\${colorItem.colorIndex}" style="cursor: pointer;">
@@ -887,7 +892,37 @@ export class XCAssetsViewer {
             const panel = document.getElementById('propertiesPanel');
 
             if (asset.type === 'image') {
-              const devices = [...new Set(asset.images.map(i => i.idiom))].join(', ');
+              // Collect unique idioms
+              const idioms = new Set();
+              asset.images.forEach(img => {
+                if (img.subtype === 'mac-catalyst') {
+                  idioms.add('mac-catalyst');
+                } else {
+                  idioms.add(img.idiom || 'universal');
+                }
+              });
+
+              // Device checkboxes
+              const allDevices = [
+                { id: 'iphone', label: 'iPhone' },
+                { id: 'ipad', label: 'iPad' },
+                { id: 'mac-catalyst', label: 'Mac Catalyst Scaled' },
+                { id: 'car', label: 'CarPlay' },
+                { id: 'vision', label: 'Apple Vision' },
+                { id: 'watch', label: 'Apple Watch' },
+                { id: 'tv', label: 'Apple TV' }
+              ];
+
+              const devicesHtml = allDevices.map(device => {
+                const checked = idioms.has(device.id) ? '☑' : '☐';
+                const indent = device.id === 'mac-catalyst' ? 'padding-left: 16px;' : '';
+                return \`<div style="padding: 2px 0; \${indent}">\${checked} \${device.label}</div>\`;
+              }).join('');
+
+              const universalHtml = idioms.has('universal')
+                ? '<div style="padding: 2px 0; margin-bottom: 4px;">☑ Universal</div>'
+                : '';
+
               const scales = [...new Set(asset.images.map(i => i.scale))].join(', ');
 
               panel.innerHTML = \`
@@ -900,8 +935,13 @@ export class XCAssetsViewer {
                   <div class="property-value">Image Set</div>
                 </div>
                 <div class="property-section">
-                  <div class="property-title">Devices</div>
-                  <div class="property-value">\${devices}</div>
+                  <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">
+                    Devices
+                  </div>
+                  <div style="font-size: 12px; line-height: 1.5;">
+                    \${universalHtml}
+                    \${devicesHtml}
+                  </div>
                 </div>
                 <div class="property-section">
                   <div class="property-title">Scales</div>
