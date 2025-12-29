@@ -14,8 +14,6 @@ tsconfig.json
 **/*.ts
 !out/**/*.js
 AssetExample/**
-REFACTORING_PLAN.md
-CLAUDE.md
 *.md
 !README.md
 
