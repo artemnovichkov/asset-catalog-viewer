@@ -422,6 +422,7 @@ export class XCAssetsViewer {
 
           const assetsData = ${assetsJson};
           let allAssets = [];
+          let currentSelectedAssetIndex = -1;
 
           // Combine all assets
           allAssets = [
@@ -549,6 +550,7 @@ export class XCAssetsViewer {
 
           // Select asset
           function selectAsset(index) {
+            currentSelectedAssetIndex = index;
             // Update selection
             document.querySelectorAll('.asset-list-item').forEach((item, idx) => {
               item.classList.toggle('selected', idx === index);
@@ -557,6 +559,20 @@ export class XCAssetsViewer {
             const asset = allAssets[index];
             renderPreview(asset);
             renderProperties(asset);
+          }
+
+          // Deselect variant (image/color) within current asset
+          function deselectVariant() {
+            if (currentSelectedAssetIndex >= 0) {
+              const panel = document.getElementById('previewPanel');
+              // Remove selection from all variants
+              panel.querySelectorAll('.variant-item').forEach(v => {
+                v.classList.remove('selected');
+              });
+              // Show general asset properties
+              const asset = allAssets[currentSelectedAssetIndex];
+              renderProperties(asset);
+            }
           }
 
           // Render preview
@@ -1266,6 +1282,20 @@ export class XCAssetsViewer {
             if (allAssets.length > 0) {
               selectAsset(0);
             }
+
+            // Add click handler to deselect variant on empty area click
+            const previewPanel = document.getElementById('previewPanel');
+            previewPanel.addEventListener('click', (e) => {
+              const target = e.target;
+              // Check if clicked on empty/container areas (not on variants or their children)
+              if (target === previewPanel ||
+                  target.classList.contains('preview-container') ||
+                  target.classList.contains('preview-content') ||
+                  target.classList.contains('device-group') ||
+                  target.classList.contains('slot-grid')) {
+                deselectVariant();
+              }
+            });
           })();
         </script>
       </body>
