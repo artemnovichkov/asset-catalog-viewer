@@ -1,0 +1,322 @@
+import * as vscode from 'vscode';
+import * as path from 'path';
+import * as fs from 'fs';
+import { MAX_DIRECTORY_DEPTH } from '../constants';
+import {
+  AssetCatalog,
+  AssetItem,
+  ImageSet,
+  ImageVariant,
+  AppIconSet,
+  AppIconVariant,
+  ColorSet,
+  DataSet,
+  DataItem,
+  ImageContents,
+  AppIconContents,
+  ColorContents,
+  DataContents,
+  ColorDefinition
+} from '../types';
+
+export class AssetParser {
+  async parse(xcassetsPath: string): Promise<AssetCatalog> {
+    const catalog: AssetCatalog = {
+      name: path.basename(xcassetsPath),
+      items: await this.parseDirectory(xcassetsPath),
+    };
+
+    return catalog;
+  }
+
+  private async parseDirectory(dirPath: string, depth: number = 0, rootPath?: string): Promise<AssetItem[]> {
+    if (depth > MAX_DIRECTORY_DEPTH) {
+      console.warn(`Max depth exceeded: ${dirPath}`);
+      return [];
+    }
+
+    const root = rootPath || dirPath;
+    const items: AssetItem[] = [];
+
+    let entries;
+    try {
+      entries = await fs.promises.readdir(dirPath, {
+        withFileTypes: true,
+      });
+    } catch (error) {
+      vscode.window.showErrorMessage(`Cannot read directory: ${dirPath}`);
+      return [];
+    }
+
+    for (const entry of entries) {
+      if (!entry.isDirectory()) {
+        continue;
+      }
+
+      // Skip hidden/system files
+      if (entry.name.startsWith('.')) {
+        continue;
+      }
+
+      const entryPath = path.join(dirPath, entry.name);
+      const resolved = path.resolve(entryPath);
+
+      // Prevent path traversal via symlinks
+      if (!resolved.startsWith(path.resolve(root))) {
+        console.warn(`Skipping path outside catalog: ${resolved}`);
+        continue;
+      }
+
+      if (entry.name.endsWith('.imageset')) {
+        const imageSet = await this.parseImageSet(entryPath);
+        if (!imageSet) {
+          console.warn(`Failed to parse imageset: ${entryPath}`);
+        } else {
+          items.push({
+            type: 'imageset',
+            name: imageSet.name,
+            path: entryPath,
+            imageSet,
+          });
+        }
+      } else if (entry.name.endsWith('.appiconset')) {
+        const appIconSet = await this.parseAppIconSet(entryPath);
+        if (!appIconSet) {
+          console.warn(`Failed to parse appiconset: ${entryPath}`);
+        } else {
+          items.push({
+            type: 'appiconset',
+            name: appIconSet.name,
+            path: entryPath,
+            appIconSet,
+          });
+        }
+      } else if (entry.name.endsWith('.colorset')) {
+        const colorSet = await this.parseColorSet(entryPath);
+        if (!colorSet) {
+          console.warn(`Failed to parse colorset: ${entryPath}`);
+        } else {
+          items.push({
+            type: 'colorset',
+            name: colorSet.name,
+            path: entryPath,
+            colorSet,
+          });
+        }
+      } else if (entry.name.endsWith('.dataset')) {
+        const dataSet = await this.parseDataSet(entryPath);
+        if (!dataSet) {
+          console.warn(`Failed to parse dataset: ${entryPath}`);
+        } else {
+          items.push({
+            type: 'dataset',
+            name: dataSet.name,
+            path: entryPath,
+            dataSet,
+          });
+        }
+      } else {
+        // Regular folder - recurse into it
+        const children = await this.parseDirectory(entryPath, depth + 1, root);
+        if (children.length > 0) {
+          items.push({
+            type: 'folder',
+            name: entry.name,
+            path: entryPath,
+            children,
+          });
+        }
+      }
+    }
+
+    return items;
+  }
+
+  private async parseImageSet(imageSetPath: string): Promise<ImageSet | null> {
+    const contentsPath = path.join(imageSetPath, 'Contents.json');
+    if (!fs.existsSync(contentsPath)) {
+      return null;
+    }
+
+    let contents: ImageContents;
+    try {
+      contents = JSON.parse(
+        await fs.promises.readFile(contentsPath, 'utf8')
+      ) as ImageContents;
+    } catch (error) {
+      vscode.window.showErrorMessage(
+        `Failed to parse ${path.basename(imageSetPath)}: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+      return null;
+    }
+
+    // Validate structure
+    if (!contents.images || !Array.isArray(contents.images)) {
+      console.warn(`Invalid imageset structure: ${imageSetPath}`);
+      return null;
+    }
+
+    const images: ImageVariant[] = [];
+
+    for (const image of contents.images || []) {
+      const imagePath = image.filename
+        ? path.join(imageSetPath, image.filename)
+        : undefined;
+
+      // Validate file exists
+      if (imagePath && !fs.existsSync(imagePath)) {
+        console.warn(`Referenced image missing: ${imagePath}`);
+      }
+
+      images.push({
+        filename: image.filename || '',
+        scale: image.scale,
+        idiom: image.idiom || 'universal',
+        subtype: image.subtype,
+        path: imagePath || '',
+      });
+    }
+
+    return {
+      name: path.basename(imageSetPath, '.imageset'),
+      images,
+    };
+  }
+
+  private async parseAppIconSet(appIconSetPath: string): Promise<AppIconSet | null> {
+    const contentsPath = path.join(appIconSetPath, 'Contents.json');
+    if (!fs.existsSync(contentsPath)) {
+      return null;
+    }
+
+    let contents: AppIconContents;
+    try {
+      contents = JSON.parse(
+        await fs.promises.readFile(contentsPath, 'utf8')
+      ) as AppIconContents;
+    } catch (error) {
+      vscode.window.showErrorMessage(
+        `Failed to parse ${path.basename(appIconSetPath)}: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+      return null;
+    }
+
+    // Validate structure
+    if (!contents.images || !Array.isArray(contents.images)) {
+      console.warn(`Invalid appiconset structure: ${appIconSetPath}`);
+      return null;
+    }
+
+    const icons: AppIconVariant[] = [];
+
+    for (const image of contents.images || []) {
+      const imagePath = image.filename
+        ? path.join(appIconSetPath, image.filename)
+        : undefined;
+
+      // Validate file exists
+      if (imagePath && !fs.existsSync(imagePath)) {
+        console.warn(`Referenced image missing: ${imagePath}`);
+      }
+
+      icons.push({
+        filename: image.filename || '',
+        size: image.size,
+        idiom: image.idiom || 'universal',
+        platform: image.platform,
+        appearances: image.appearances || [],
+        path: imagePath || '',
+      });
+    }
+
+    return {
+      name: path.basename(appIconSetPath, '.appiconset'),
+      icons,
+    };
+  }
+
+  private async parseColorSet(colorSetPath: string): Promise<ColorSet | null> {
+    const contentsPath = path.join(colorSetPath, 'Contents.json');
+    if (!fs.existsSync(contentsPath)) {
+      return null;
+    }
+
+    let contents: ColorContents;
+    try {
+      contents = JSON.parse(
+        await fs.promises.readFile(contentsPath, 'utf8')
+      ) as ColorContents;
+    } catch (error) {
+      vscode.window.showErrorMessage(
+        `Failed to parse ${path.basename(colorSetPath)}: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+      return null;
+    }
+
+    // Validate structure
+    if (!contents.colors || !Array.isArray(contents.colors)) {
+      console.warn(`Invalid colorset structure: ${colorSetPath}`);
+      return null;
+    }
+
+    return {
+      name: path.basename(colorSetPath, '.colorset'),
+      colors: contents.colors as ColorDefinition[],
+    };
+  }
+
+  private async parseDataSet(dataSetPath: string): Promise<DataSet | null> {
+    const contentsPath = path.join(dataSetPath, 'Contents.json');
+    if (!fs.existsSync(contentsPath)) {
+      return null;
+    }
+
+    let contents: DataContents;
+    try {
+      contents = JSON.parse(
+        await fs.promises.readFile(contentsPath, 'utf8')
+      ) as DataContents;
+    } catch (error) {
+      vscode.window.showErrorMessage(
+        `Failed to parse ${path.basename(dataSetPath)}: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+      return null;
+    }
+
+    // Validate structure
+    if (!contents.data || !Array.isArray(contents.data)) {
+      console.warn(`Invalid dataset structure: ${dataSetPath}`);
+      return null;
+    }
+
+    const dataItems: DataItem[] = [];
+    for (const item of contents.data || []) {
+      const dataItem: DataItem = {
+        filename: item.filename || '',
+        idiom: item.idiom || 'universal',
+      };
+
+      if (item.filename) {
+        const filePath = path.join(dataSetPath, item.filename);
+        if (fs.existsSync(filePath)) {
+          dataItem.path = filePath;
+          // Read file content for text-based files
+          try {
+            const content = await fs.promises.readFile(filePath, 'utf8');
+            dataItem.content = content;
+          } catch (e) {
+            // If reading as text fails, it might be binary
+            dataItem.content = undefined;
+          }
+        }
+      }
+
+      dataItems.push(dataItem);
+    }
+
+    return {
+      name: path.basename(dataSetPath, '.dataset'),
+      data: dataItems,
+    };
+  }
+}
