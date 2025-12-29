@@ -26,7 +26,14 @@
           "group": "navigation"
         }
       ]
-    }
+    },
+    "iconThemes": [
+      {
+        "id": "xcassets-icons",
+        "label": "XCAssets Icons",
+        "path": "./icons/xcassets-icon-theme.json"
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",

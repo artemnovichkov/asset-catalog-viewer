@@ -1,0 +1,26 @@
+{
+  "iconDefinitions": {
+    "_xcassets_folder": {
+      "iconPath": "./xcassets-folder.svg",
+      "fontColor": "#8AA8C8"
+    }
+  },
+  "folderNames": {
+    "Assets.xcassets": "_xcassets_folder",
+    "Images.xcassets": "_xcassets_folder",
+    "Media.xcassets": "_xcassets_folder",
+    "Resources.xcassets": "_xcassets_folder",
+    "Icons.xcassets": "_xcassets_folder",
+    "Colors.xcassets": "_xcassets_folder",
+    "Stickers.xcassets": "_xcassets_folder"
+  },
+  "folderNamesExpanded": {
+    "Assets.xcassets": "_xcassets_folder",
+    "Images.xcassets": "_xcassets_folder",
+    "Media.xcassets": "_xcassets_folder",
+    "Resources.xcassets": "_xcassets_folder",
+    "Icons.xcassets": "_xcassets_folder",
+    "Colors.xcassets": "_xcassets_folder",
+    "Stickers.xcassets": "_xcassets_folder"
+  }
+}
