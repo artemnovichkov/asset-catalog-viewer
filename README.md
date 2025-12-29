@@ -2,6 +2,8 @@
 
 A VS Code extension that provides an Xcode-like interface for previewing and inspecting `.xcassets` (Asset Catalog) directories. View your iOS, macOS, and other Apple platform assets with the same visual experience you get in Xcode.
 
+![](.github/screenshot.png)
+
 ## Features
 
 ### 🎨 Asset Type Support
@@ -20,6 +22,7 @@ A VS Code extension that provides an Xcode-like interface for previewing and ins
 
 ### ✨ Interactive Features
 
+- **Search Filter** - Filter assets by name in real-time across all folders
 - **Hierarchical Navigation** - Expandable folders matching your asset catalog structure
 - **Variant Selection** - Click on individual image/color variants to see detailed properties
 - **Quick Look** - Press Space to open selected assets in macOS Quick Look
