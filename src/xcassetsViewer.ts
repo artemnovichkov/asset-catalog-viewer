@@ -171,12 +171,23 @@ export class XCAssetsViewer {
           }
           body {
             display: grid;
-            grid-template-columns: 250px 1fr 300px;
+            grid-template-columns: var(--left-width, 250px) 4px 1fr 4px var(--right-width, 300px);
             height: 100vh;
             color: var(--vscode-foreground);
             background-color: var(--vscode-editor-background);
             font-family: var(--vscode-font-family);
             font-size: 13px;
+          }
+          .resizer {
+            background-color: var(--vscode-panel-border);
+            cursor: col-resize;
+            position: relative;
+          }
+          .resizer:hover {
+            background-color: var(--vscode-focusBorder);
+          }
+          .resizer.dragging {
+            background-color: var(--vscode-focusBorder);
           }
 
           /* Left Panel - Asset List */
@@ -393,9 +404,11 @@ export class XCAssetsViewer {
       </head>
       <body>
         <div class="left-panel" id="assetList"></div>
+        <div class="resizer" id="leftResizer"></div>
         <div class="middle-panel" id="previewPanel">
           <div class="empty-state">Select an asset to preview</div>
         </div>
+        <div class="resizer" id="rightResizer"></div>
         <div class="right-panel" id="propertiesPanel">
           <div class="empty-state">No asset selected</div>
         </div>
@@ -413,6 +426,59 @@ export class XCAssetsViewer {
             ...assetsData.colorSets,
             ...assetsData.dataSets
           ];
+
+          // Resizer functionality
+          let leftWidth = 250;
+          let rightWidth = 300;
+
+          function initResizers() {
+            const leftResizer = document.getElementById('leftResizer');
+            const rightResizer = document.getElementById('rightResizer');
+
+            let isResizing = false;
+            let currentResizer = null;
+
+            leftResizer.addEventListener('mousedown', (e) => {
+              isResizing = true;
+              currentResizer = 'left';
+              leftResizer.classList.add('dragging');
+              e.preventDefault();
+            });
+
+            rightResizer.addEventListener('mousedown', (e) => {
+              isResizing = true;
+              currentResizer = 'right';
+              rightResizer.classList.add('dragging');
+              e.preventDefault();
+            });
+
+            document.addEventListener('mousemove', (e) => {
+              if (!isResizing) return;
+
+              if (currentResizer === 'left') {
+                const newWidth = e.clientX;
+                if (newWidth >= 150 && newWidth <= 500) {
+                  leftWidth = newWidth;
+                  document.body.style.setProperty('--left-width', \`\${leftWidth}px\`);
+                }
+              } else if (currentResizer === 'right') {
+                const newWidth = window.innerWidth - e.clientX;
+                if (newWidth >= 200 && newWidth <= 600) {
+                  rightWidth = newWidth;
+                  document.body.style.setProperty('--right-width', \`\${rightWidth}px\`);
+                }
+              }
+            });
+
+            document.addEventListener('mouseup', () => {
+              if (isResizing) {
+                isResizing = false;
+                leftResizer.classList.remove('dragging');
+                rightResizer.classList.remove('dragging');
+                currentResizer = null;
+              }
+            });
+          }
 
           // Helper: Render PDF to canvas
           async function renderPdfToCanvas(pdfUrl, canvas, scale = 1) {
@@ -992,6 +1058,7 @@ export class XCAssetsViewer {
 
           // Initialize
           (async () => {
+            initResizers();
             await renderAssetList();
             if (allAssets.length > 0) {
               selectAsset(0);
