@@ -302,6 +302,15 @@ export class XCAssetsViewer {
           }
           .image-slot.filled {
             border: 1px solid var(--vscode-panel-border);
+            cursor: pointer;
+          }
+          .image-slot.filled:hover {
+            border-color: var(--vscode-focusBorder);
+            background-color: var(--vscode-list-hoverBackground);
+          }
+          .image-slot.filled.selected {
+            border: 2px solid var(--vscode-focusBorder);
+            background-color: var(--vscode-list-activeSelectionBackground);
           }
           .image-slot img {
             max-width: 86px;
@@ -609,7 +618,7 @@ export class XCAssetsViewer {
                     if (isPdf) {
                       slotsHtml = \`
                         <div style="display: flex; flex-direction: column; align-items: center;">
-                          <div class="image-slot filled">
+                          <div class="image-slot filled" data-image-filename="\${img.filename}" data-image-uri="\${img.uri}" data-image-scale="All">
                             <canvas style="max-width: 86px; max-height: 86px; position: relative; z-index: 1;"
                                     data-pdf-url="\${img.uri}"
                                     data-preview-pdf="true"></canvas>
@@ -620,7 +629,7 @@ export class XCAssetsViewer {
                     } else {
                       slotsHtml = \`
                         <div style="display: flex; flex-direction: column; align-items: center;">
-                          <div class="image-slot filled">
+                          <div class="image-slot filled" data-image-filename="\${img.filename}" data-image-uri="\${img.uri}" data-image-scale="All">
                             <img src="\${img.uri}" alt="All" />
                           </div>
                           <div class="slot-label">All</div>
@@ -640,7 +649,7 @@ export class XCAssetsViewer {
                         if (isPdf) {
                           return \`
                             <div style="display: flex; flex-direction: column; align-items: center;">
-                              <div class="image-slot filled">
+                              <div class="image-slot filled" data-image-filename="\${img.filename}" data-image-uri="\${img.uri}" data-image-scale="\${scale}">
                                 <canvas style="max-width: 86px; max-height: 86px; position: relative; z-index: 1;"
                                         data-pdf-url="\${img.uri}"
                                         data-preview-pdf="true"></canvas>
@@ -651,7 +660,7 @@ export class XCAssetsViewer {
                         } else {
                           return \`
                             <div style="display: flex; flex-direction: column; align-items: center;">
-                              <div class="image-slot filled">
+                              <div class="image-slot filled" data-image-filename="\${img.filename}" data-image-uri="\${img.uri}" data-image-scale="\${scale}">
                                 <img src="\${img.uri}" alt="\${scale}" />
                               </div>
                               <div class="slot-label">\${scale}</div>
@@ -695,6 +704,24 @@ export class XCAssetsViewer {
                 const pdfUrl = canvas.dataset.pdfUrl;
                 await renderPdfToCanvas(pdfUrl, canvas, 0.5);
               }
+
+              // Add click handlers for image slots
+              panel.querySelectorAll('.image-slot.filled').forEach(slot => {
+                slot.addEventListener('click', async (e) => {
+                  // Remove selection from all slots
+                  panel.querySelectorAll('.image-slot.filled').forEach(s => {
+                    s.classList.remove('selected');
+                  });
+                  // Select this slot
+                  slot.classList.add('selected');
+
+                  const filename = slot.dataset.imageFilename;
+                  const uri = slot.dataset.imageUri;
+                  const scale = slot.dataset.imageScale;
+
+                  await renderImageVariantProperties(asset, filename, uri, scale);
+                });
+              });
             } else if (asset.type === 'color') {
               // Group colors by idiom (mac-catalyst goes under ipad)
               const idiomGroups = {};
@@ -785,12 +812,6 @@ export class XCAssetsViewer {
                   renderColorProperties(asset, colorIndex);
                 });
               });
-
-              // Select first color variant by default
-              const firstVariant = panel.querySelector('.color-variant-item');
-              if (firstVariant) {
-                firstVariant.classList.add('selected');
-              }
             } else if (asset.type === 'data') {
               panel.innerHTML = \`
                 <div class="preview-container">
@@ -953,6 +974,109 @@ export class XCAssetsViewer {
             \`;
           }
 
+          // Render image variant properties
+          async function renderImageVariantProperties(asset, filename, uri, scale) {
+            const panel = document.getElementById('propertiesPanel');
+
+            // Get image dimensions
+            let imageWidth = 0;
+            let imageHeight = 0;
+            try {
+              const img = new Image();
+              await new Promise((resolve, reject) => {
+                img.onload = () => {
+                  imageWidth = img.naturalWidth;
+                  imageHeight = img.naturalHeight;
+                  resolve();
+                };
+                img.onerror = reject;
+                img.src = uri;
+              });
+            } catch (e) {
+              console.error('Failed to load image:', e);
+            }
+
+            const imageSizeText = imageWidth && imageHeight
+              ? \`\${imageWidth} × \${imageHeight} pixels\`
+              : 'Unknown';
+
+            // Collect general imageset properties
+            const idioms = new Set();
+            asset.images.forEach(img => {
+              if (img.subtype === 'mac-catalyst') {
+                idioms.add('mac-catalyst');
+              } else {
+                idioms.add(img.idiom || 'universal');
+              }
+            });
+
+            // Device checkboxes
+            const allDevices = [
+              { id: 'iphone', label: 'iPhone' },
+              { id: 'ipad', label: 'iPad' },
+              { id: 'mac-catalyst', label: 'Mac Catalyst Scaled' },
+              { id: 'car', label: 'CarPlay' },
+              { id: 'vision', label: 'Apple Vision' },
+              { id: 'watch', label: 'Apple Watch' },
+              { id: 'tv', label: 'Apple TV' }
+            ];
+
+            const devicesHtml = allDevices.map(device => {
+              const checked = idioms.has(device.id) ? '☑' : '☐';
+              const indent = device.id === 'mac-catalyst' ? 'padding-left: 16px;' : '';
+              return \`<div style="padding: 2px 0; \${indent}">\${checked} \${device.label}</div>\`;
+            }).join('');
+
+            const universalHtml = idioms.has('universal')
+              ? '<div style="padding: 2px 0; margin-bottom: 4px;">☑ Universal</div>'
+              : '';
+
+            const scales = [...new Set(asset.images.map(i => i.scale))].join(', ');
+
+            panel.innerHTML = \`
+              <div class="property-section">
+                <div class="property-title">Name</div>
+                <div class="property-value">\${asset.name}</div>
+              </div>
+              <div class="property-section">
+                <div class="property-title">Type</div>
+                <div class="property-value">Image Set</div>
+              </div>
+              <div class="property-section">
+                <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">
+                  Devices
+                </div>
+                <div style="font-size: 12px; line-height: 1.5;">
+                  \${universalHtml}
+                  \${devicesHtml}
+                </div>
+              </div>
+              <div class="property-section">
+                <div class="property-title">Scales</div>
+                <div class="property-value">\${scales}</div>
+              </div>
+              <div class="property-section" style="border-top: 1px solid var(--vscode-panel-border); padding-top: 16px; margin-top: 16px;">
+                <div class="property-title">Image</div>
+                <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px; margin-top: 12px;">
+                  File Name
+                </div>
+                <div class="property-value">\${filename}</div>
+                <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px; margin-top: 12px;">
+                  Compression
+                </div>
+                <div class="property-value">Inherited (Automatic)</div>
+                <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px; margin-top: 12px;">
+                  Image Size
+                </div>
+                <div class="property-value">\${imageSizeText}</div>
+                <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px; margin-top: 12px;">
+                  Color Space
+                </div>
+                <div class="property-value">sRGB IEC61966-2.1</div>
+              </div>
+            \`;
+          }
+
           // Render properties
           function renderProperties(asset) {
             const panel = document.getElementById('propertiesPanel');
@@ -1015,8 +1139,93 @@ export class XCAssetsViewer {
                 </div>
               \`;
             } else if (asset.type === 'color') {
-              // Use renderColorProperties for first variant
-              renderColorProperties(asset, 0);
+              // Collect unique idioms and appearances for general properties
+              const idioms = new Set();
+              const hasLuminosity = new Set();
+              const hasContrast = new Set();
+              let gamut = 'Any';
+
+              asset.colors.forEach(item => {
+                if (item.subtype === 'mac-catalyst') {
+                  idioms.add('mac-catalyst');
+                } else {
+                  idioms.add(item.idiom || 'universal');
+                }
+
+                if (item.color?.['color-space']) {
+                  gamut = item.color['color-space'].toUpperCase();
+                }
+
+                const appearances = item.appearances || [];
+                appearances.forEach(app => {
+                  if (app.appearance === 'luminosity') {
+                    hasLuminosity.add(app.value);
+                  } else if (app.appearance === 'contrast') {
+                    hasContrast.add(app.value);
+                  }
+                });
+              });
+
+              // Device checkboxes
+              const allDevices = [
+                { id: 'iphone', label: 'iPhone' },
+                { id: 'ipad', label: 'iPad' },
+                { id: 'mac-catalyst', label: 'Mac Catalyst Scaled' },
+                { id: 'car', label: 'CarPlay' },
+                { id: 'vision', label: 'Apple Vision' },
+                { id: 'watch', label: 'Apple Watch' },
+                { id: 'tv', label: 'Apple TV' }
+              ];
+
+              const devicesHtml = allDevices.map(device => {
+                const checked = idioms.has(device.id) ? '☑' : '☐';
+                const indent = device.id === 'mac-catalyst' ? 'padding-left: 16px;' : '';
+                return \`<div style="padding: 2px 0; \${indent}">\${checked} \${device.label}</div>\`;
+              }).join('');
+
+              // Appearances
+              let appearancesText = 'None';
+              if (hasLuminosity.has('dark') || hasContrast.has('high')) {
+                const parts = [];
+                if (hasLuminosity.has('dark')) parts.push('Any, Dark');
+                if (hasContrast.has('high')) parts.push('High Contrast');
+                appearancesText = parts.join(', ');
+              }
+
+              const universalHtml = idioms.has('universal')
+                ? '<div style="padding: 2px 0; margin-bottom: 4px;">☑ Universal</div>'
+                : '';
+
+              panel.innerHTML = \`
+                <div class="property-section">
+                  <div class="property-title">Color Set</div>
+                  <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 12px;">
+                    Name
+                  </div>
+                  <div class="property-value">\${asset.name}</div>
+                </div>
+                <div class="property-section">
+                  <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">
+                    Devices
+                  </div>
+                  <div style="font-size: 12px; line-height: 1.5;">
+                    \${universalHtml}
+                    \${devicesHtml}
+                  </div>
+                </div>
+                <div class="property-section">
+                  <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">
+                    Appearances
+                  </div>
+                  <div class="property-value">\${appearancesText}</div>
+                </div>
+                <div class="property-section">
+                  <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">
+                    Gamut
+                  </div>
+                  <div class="property-value">\${gamut}</div>
+                </div>
+              \`;
             } else if (asset.type === 'data') {
               panel.innerHTML = \`
                 <div class="property-section">
