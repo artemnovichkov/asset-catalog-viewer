@@ -373,17 +373,22 @@ export class XCAssetsViewer {
             flex-direction: column;
             align-items: center;
             justify-content: flex-start;
-            padding: 40px;
+            padding: 16px 40px 40px 40px;
             overflow: auto;
           }
           .preview-container {
             text-align: center;
+            display: flex;
+            flex-direction: column;
+            width: 100%;
           }
           .preview-title {
-            font-size: 18px;
+            font-size: 13px;
             font-weight: 600;
-            margin-bottom: 40px;
+            margin-bottom: 20px;
             color: var(--vscode-foreground);
+            text-align: left;
+            align-self: flex-start;
           }
           .preview-content {
             display: flex;
