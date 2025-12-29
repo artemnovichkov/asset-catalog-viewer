@@ -1,8 +1,8 @@
 {
   "name": "xcassets-viewer",
-  "displayName": "XCAssets Viewer",
+  "displayName": "Asset Catalog Viewer",
   "description": "View .xcassets content like in Xcode",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -15,7 +15,7 @@
     "commands": [
       {
         "command": "xcassetsViewer.openViewer",
-        "title": "Open XCAssets Viewer"
+        "title": "Open Asset Catalog Viewer"
       }
     ],
     "menus": {
