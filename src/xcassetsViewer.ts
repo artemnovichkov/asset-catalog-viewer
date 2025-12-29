@@ -751,7 +751,6 @@ export class XCAssetsViewer {
                 { id: 'ipad', label: 'iPad' },
                 { id: 'mac-catalyst', label: 'Mac Catalyst Scaled' },
                 { id: 'car', label: 'CarPlay' },
-                { id: 'mac', label: 'Mac' },
                 { id: 'vision', label: 'Apple Vision' },
                 { id: 'watch', label: 'Apple Watch' },
                 { id: 'tv', label: 'Apple TV' }
@@ -763,11 +762,14 @@ export class XCAssetsViewer {
                 return \`<div style="padding: 2px 0; \${indent}">\${checked} \${device.label}</div>\`;
               }).join('');
 
-              // Appearances
-              const appearancesHtml = \`
-                <div style="padding: 2px 0;">Any, Dark</div>
-                <div style="padding: 2px 0; padding-left: 16px;">\${hasContrast.has('high') ? '☑' : '☐'} High Contrast</div>
-              \`;
+              // Appearances - determine what appearances are present
+              let appearancesText = 'None';
+              if (hasLuminosity.has('dark') || hasContrast.has('high')) {
+                const parts = [];
+                if (hasLuminosity.has('dark')) parts.push('Any, Dark');
+                if (hasContrast.has('high')) parts.push('High Contrast');
+                appearancesText = parts.join(', ');
+              }
 
               const universalHtml = idioms.has('universal')
                 ? '<div style="padding: 2px 0; margin-bottom: 4px;">☑ Universal</div>'
@@ -775,25 +777,62 @@ export class XCAssetsViewer {
 
               panel.innerHTML = \`
                 <div class="property-section">
-                  <div class="property-title">Name</div>
+                  <div class="property-title">Color Set</div>
+                  <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 12px;">
+                    Name
+                  </div>
                   <div class="property-value">\${asset.name}</div>
                 </div>
                 <div class="property-section">
-                  <div class="property-title">Devices</div>
+                  <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">
+                    Devices
+                  </div>
                   <div style="font-size: 12px; line-height: 1.5;">
                     \${universalHtml}
                     \${devicesHtml}
                   </div>
                 </div>
                 <div class="property-section">
-                  <div class="property-title">Appearances</div>
-                  <div style="font-size: 12px; line-height: 1.5;">
-                    \${appearancesHtml}
+                  <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">
+                    Appearances
                   </div>
+                  <div class="property-value">\${appearancesText}</div>
                 </div>
                 <div class="property-section">
-                  <div class="property-title">Gamut</div>
+                  <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">
+                    Gamut
+                  </div>
                   <div class="property-value">\${gamut}</div>
+                </div>
+                <div class="property-section">
+                  <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">
+                    Direction
+                  </div>
+                  <div class="property-value">Fixed</div>
+                </div>
+                <div class="property-section">
+                  <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">
+                    Width Class
+                  </div>
+                  <div class="property-value">Any</div>
+                </div>
+                <div class="property-section">
+                  <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">
+                    Height Class
+                  </div>
+                  <div class="property-value">Any</div>
+                </div>
+                <div class="property-section">
+                  <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">
+                    Memory
+                  </div>
+                  <div class="property-value">None</div>
+                </div>
+                <div class="property-section">
+                  <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">
+                    Graphics
+                  </div>
+                  <div class="property-value">None</div>
                 </div>
               \`;
             } else if (asset.type === 'data') {
