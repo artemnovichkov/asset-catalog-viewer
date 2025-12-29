@@ -584,6 +584,16 @@ export class XCAssetsViewer {
           // Configure PDF.js
           pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
+          // HTML escaping function for security
+          function escapeHtml(unsafe) {
+            return unsafe
+              .replace(/&/g, "&amp;")
+              .replace(/</g, "&lt;")
+              .replace(/>/g, "&gt;")
+              .replace(/"/g, "&quot;")
+              .replace(/'/g, "&#039;");
+          }
+
           const assetsData = ${assetsJson};
           let allAssets = [];
           let currentSelectedAssetIndex = -1;
@@ -781,7 +791,7 @@ export class XCAssetsViewer {
                     <div class="asset-list-item folder" data-folder-path="\${itemPath}" data-path="\${item.path || ''}" style="padding-left: \${indent + 8}px;">
                       <i class="codicon codicon-chevron-right folder-chevron \${chevronClass}"></i>
                       <i class="codicon codicon-folder asset-icon"></i>
-                      <span>\${item.name}</span>
+                      <span>\${escapeHtml(item.name)}</span>
                     </div>
                   \`;
                   if (isExpanded && item.children && item.children.length > 0) {
@@ -827,7 +837,7 @@ export class XCAssetsViewer {
 
                   html += \`<div class="asset-list-item" data-index="\${assetIndex}" data-path="\${item.path || ''}" style="padding-left: \${indent + 24 + 8}px;">
                     \${iconHtml}
-                    <span>\${item.name}</span>
+                    <span>\${escapeHtml(item.name)}</span>
                   </div>\`;
                 }
               });
@@ -1047,7 +1057,7 @@ export class XCAssetsViewer {
 
               panel.innerHTML = \`
                 <div class="preview-container">
-                  <div class="preview-title">\${asset.name}</div>
+                  <div class="preview-title">\${escapeHtml(asset.name)}</div>
                   <div class="preview-content" style="flex-direction: column; width: 100%;">
                     \${groupsHtml}
                   </div>
@@ -1152,7 +1162,7 @@ export class XCAssetsViewer {
 
               panel.innerHTML = \`
                 <div class="preview-container">
-                  <div class="preview-title">\${asset.name}</div>
+                  <div class="preview-title">\${escapeHtml(asset.name)}</div>
                   <div class="preview-content" style="flex-direction: column; align-items: flex-start; width: 100%;">
                     \${idiomHtml}
                   </div>
@@ -1232,7 +1242,7 @@ export class XCAssetsViewer {
 
               panel.innerHTML = \`
                 <div class="preview-container">
-                  <div class="preview-title">\${asset.name}</div>
+                  <div class="preview-title">\${escapeHtml(asset.name)}</div>
                   <div class="preview-content" style="flex-direction: column; width: 100%;">
                     \${iconSlotsHtml}
                   </div>
@@ -1272,7 +1282,7 @@ export class XCAssetsViewer {
                   contentHtml = \`
                     <div style="width: 100%; max-width: 800px;">
                       <div style="margin-bottom: 12px; font-size: 13px; color: var(--vscode-descriptionForeground);">
-                        File: \${dataItem.filename}
+                        File: \${escapeHtml(dataItem.filename)}
                       </div>
                       <pre style="
                         background-color: var(--vscode-textCodeBlock-background);
@@ -1291,7 +1301,7 @@ export class XCAssetsViewer {
                 } else if (dataItem.filename) {
                   contentHtml = \`
                     <div style="color: var(--vscode-descriptionForeground);">
-                      File: \${dataItem.filename}<br>
+                      File: \${escapeHtml(dataItem.filename)}<br>
                       <em>(Binary or unreadable content)</em>
                     </div>
                   \`;
@@ -1304,7 +1314,7 @@ export class XCAssetsViewer {
 
               panel.innerHTML = \`
                 <div class="preview-container">
-                  <div class="preview-title">\${asset.name}</div>
+                  <div class="preview-title">\${escapeHtml(asset.name)}</div>
                   <div class="preview-content" style="width: 100%;">
                     \${contentHtml}
                   </div>
@@ -1400,7 +1410,7 @@ export class XCAssetsViewer {
                   Name
                 </div>
                 <div class="property-value-with-button">
-                  <div class="property-value" style="flex: 1; margin-bottom: 0;">\${asset.name}</div>
+                  <div class="property-value" style="flex: 1; margin-bottom: 0;">\${escapeHtml(asset.name)}</div>
                   <button class="finder-button" data-path="\${asset.path}">
                     <i class="codicon codicon-folder-opened"></i>
                   </button>
@@ -1517,7 +1527,7 @@ export class XCAssetsViewer {
               <div class="property-section">
                 <div class="property-title">Name</div>
                 <div class="property-value-with-button">
-                  <div class="property-value" style="flex: 1; margin-bottom: 0;">\${asset.name}</div>
+                  <div class="property-value" style="flex: 1; margin-bottom: 0;">\${escapeHtml(asset.name)}</div>
                   <button class="finder-button" data-path="\${asset.path}">
                     <i class="codicon codicon-folder-opened"></i>
                   </button>
@@ -1546,7 +1556,7 @@ export class XCAssetsViewer {
                 <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px; margin-top: 12px;">
                   File Name
                 </div>
-                <div class="property-value">\${filename}</div>
+                <div class="property-value">\${escapeHtml(filename)}</div>
                 <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px; margin-top: 12px;">
                   Image Size
                 </div>
@@ -1627,7 +1637,7 @@ export class XCAssetsViewer {
               <div class="property-section">
                 <div class="property-title">Name</div>
                 <div class="property-value-with-button">
-                  <div class="property-value" style="flex: 1; margin-bottom: 0;">\${asset.name}</div>
+                  <div class="property-value" style="flex: 1; margin-bottom: 0;">\${escapeHtml(asset.name)}</div>
                   <button class="finder-button" data-path="\${asset.path}">
                     <i class="codicon codicon-folder-opened"></i>
                   </button>
@@ -1655,7 +1665,7 @@ export class XCAssetsViewer {
                 <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px; margin-top: 12px;">
                   File Name
                 </div>
-                <div class="property-value">\${filename}</div>
+                <div class="property-value">\${escapeHtml(filename)}</div>
                 <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px; margin-top: 12px;">
                   Compression
                 </div>
@@ -1723,7 +1733,7 @@ export class XCAssetsViewer {
                 <div class="property-section">
                   <div class="property-title">Name</div>
                   <div class="property-value-with-button">
-                    <div class="property-value" style="flex: 1; margin-bottom: 0;">\${asset.name}</div>
+                    <div class="property-value" style="flex: 1; margin-bottom: 0;">\${escapeHtml(asset.name)}</div>
                     <button class="finder-button" data-path="\${asset.path}">
                       <i class="codicon codicon-folder-opened"></i>
                     </button>
@@ -1777,7 +1787,7 @@ export class XCAssetsViewer {
                 <div class="property-section">
                   <div class="property-title">Name</div>
                   <div class="property-value-with-button">
-                    <div class="property-value" style="flex: 1; margin-bottom: 0;">\${asset.name}</div>
+                    <div class="property-value" style="flex: 1; margin-bottom: 0;">\${escapeHtml(asset.name)}</div>
                     <button class="finder-button" data-path="\${asset.path}">
                       <i class="codicon codicon-folder-opened"></i>
                     </button>
@@ -1872,7 +1882,7 @@ export class XCAssetsViewer {
                     Name
                   </div>
                   <div class="property-value-with-button">
-                    <div class="property-value" style="flex: 1; margin-bottom: 0;">\${asset.name}</div>
+                    <div class="property-value" style="flex: 1; margin-bottom: 0;">\${escapeHtml(asset.name)}</div>
                     <button class="finder-button" data-path="\${asset.path}">
                       <i class="codicon codicon-folder-opened"></i>
                     </button>
@@ -1914,7 +1924,7 @@ export class XCAssetsViewer {
                 <div class="property-section">
                   <div class="property-title">Name</div>
                   <div class="property-value-with-button">
-                    <div class="property-value" style="flex: 1; margin-bottom: 0;">\${asset.name}</div>
+                    <div class="property-value" style="flex: 1; margin-bottom: 0;">\${escapeHtml(asset.name)}</div>
                     <button class="finder-button" data-path="\${asset.path}">
                       <i class="codicon codicon-folder-opened"></i>
                     </button>
