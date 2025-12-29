@@ -161,6 +161,7 @@ export class XCAssetsViewer {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>${catalog.name}</title>
         <link rel="stylesheet" href="https://unpkg.com/@vscode/codicons@latest/dist/codicon.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
         <style>
           * {
             margin: 0;
@@ -209,6 +210,13 @@ export class XCAssetsViewer {
             object-fit: contain;
             border-radius: 2px;
           }
+          .asset-thumbnail-canvas {
+            width: 32px;
+            height: 32px;
+            flex-shrink: 0;
+            border-radius: 2px;
+            background: white;
+          }
 
           /* Middle Panel - Preview */
           .middle-panel {
@@ -249,6 +257,13 @@ export class XCAssetsViewer {
             border: 1px solid var(--vscode-panel-border);
             border-radius: 8px;
             margin: 0 auto;
+          }
+          .pdf-preview-canvas {
+            border: 1px solid var(--vscode-panel-border);
+            border-radius: 4px;
+            background: white;
+            max-width: 100%;
+            height: auto;
           }
           .preview-label {
             margin-top: 10px;
@@ -305,6 +320,9 @@ export class XCAssetsViewer {
         </div>
 
         <script>
+          // Configure PDF.js
+          pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
           const assetsData = ${assetsJson};
           let allAssets = [];
 
@@ -315,13 +333,36 @@ export class XCAssetsViewer {
             ...assetsData.dataSets
           ];
 
+          // Helper: Render PDF to canvas
+          async function renderPdfToCanvas(pdfUrl, canvas, scale = 1) {
+            try {
+              const loadingTask = pdfjsLib.getDocument(pdfUrl);
+              const pdf = await loadingTask.promise;
+              const page = await pdf.getPage(1);
+              const viewport = page.getViewport({ scale });
+              const context = canvas.getContext('2d');
+              canvas.height = viewport.height;
+              canvas.width = viewport.width;
+              await page.render({ canvasContext: context, viewport }).promise;
+              return true;
+            } catch (error) {
+              console.error('PDF render error:', error);
+              return false;
+            }
+          }
+
           // Render asset list
-          function renderAssetList() {
+          async function renderAssetList() {
             const listEl = document.getElementById('assetList');
             listEl.innerHTML = allAssets.map((asset, idx) => {
               let iconHtml = '';
               if (asset.type === 'image' && asset.images.length > 0) {
-                iconHtml = \`<img src="\${asset.images[0].uri}" class="asset-thumbnail" alt="\${asset.name}" />\`;
+                const isPdf = asset.images[0].filename.toLowerCase().endsWith('.pdf');
+                if (isPdf) {
+                  iconHtml = \`<canvas class="asset-thumbnail-canvas" data-pdf-url="\${asset.images[0].uri}" data-idx="\${idx}"></canvas>\`;
+                } else {
+                  iconHtml = \`<img src="\${asset.images[0].uri}" class="asset-thumbnail" alt="\${asset.name}" />\`;
+                }
               } else {
                 const iconClass = asset.type === 'color' ? 'codicon-symbol-color' : 'codicon-database';
                 iconHtml = \`<i class="codicon \${iconClass} asset-icon"></i>\`;
@@ -331,6 +372,13 @@ export class XCAssetsViewer {
                 <span>\${asset.name}</span>
               </div>\`;
             }).join('');
+
+            // Render PDF thumbnails
+            const pdfCanvases = listEl.querySelectorAll('canvas[data-pdf-url]');
+            for (const canvas of pdfCanvases) {
+              const pdfUrl = canvas.dataset.pdfUrl;
+              await renderPdfToCanvas(pdfUrl, canvas, 0.2);
+            }
 
             // Add click handlers
             listEl.querySelectorAll('.asset-list-item').forEach(item => {
@@ -354,16 +402,27 @@ export class XCAssetsViewer {
           }
 
           // Render preview
-          function renderPreview(asset) {
+          async function renderPreview(asset) {
             const panel = document.getElementById('previewPanel');
 
             if (asset.type === 'image') {
-              const imagesHtml = asset.images.map(img => \`
-                <div class="preview-item">
-                  <img src="\${img.uri}" alt="\${img.filename}" />
-                  <div class="preview-label">\${img.scale} - \${img.idiom}</div>
-                </div>
-              \`).join('');
+              const imagesHtml = asset.images.map((img, idx) => {
+                const isPdf = img.filename.toLowerCase().endsWith('.pdf');
+                if (isPdf) {
+                  return \`
+                    <div class="preview-item">
+                      <canvas class="pdf-preview-canvas" data-pdf-url="\${img.uri}" data-img-idx="\${idx}"></canvas>
+                      <div class="preview-label">\${img.scale} - \${img.idiom}</div>
+                    </div>
+                  \`;
+                }
+                return \`
+                  <div class="preview-item">
+                    <img src="\${img.uri}" alt="\${img.filename}" />
+                    <div class="preview-label">\${img.scale} - \${img.idiom}</div>
+                  </div>
+                \`;
+              }).join('');
 
               panel.innerHTML = \`
                 <div class="preview-container">
@@ -371,6 +430,13 @@ export class XCAssetsViewer {
                   <div class="preview-content">\${imagesHtml}</div>
                 </div>
               \`;
+
+              // Render PDF previews
+              const pdfCanvases = panel.querySelectorAll('canvas[data-pdf-url]');
+              for (const canvas of pdfCanvases) {
+                const pdfUrl = canvas.dataset.pdfUrl;
+                await renderPdfToCanvas(pdfUrl, canvas, 1.5);
+              }
             } else if (asset.type === 'color') {
               const color = asset.colors[0] || {};
               const colorValue = getColorValue(color.color);
@@ -487,10 +553,12 @@ export class XCAssetsViewer {
           }
 
           // Initialize
-          renderAssetList();
-          if (allAssets.length > 0) {
-            selectAsset(0);
-          }
+          (async () => {
+            await renderAssetList();
+            if (allAssets.length > 0) {
+              selectAsset(0);
+            }
+          })();
         </script>
       </body>
       </html>`;
