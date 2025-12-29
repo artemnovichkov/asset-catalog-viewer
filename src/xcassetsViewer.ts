@@ -301,20 +301,11 @@ export class XCAssetsViewer {
             border: 2px dashed var(--vscode-panel-border);
           }
           .image-slot.filled {
-            border: 1px solid var(--vscode-panel-border);
-            cursor: pointer;
-          }
-          .image-slot.filled:hover {
-            border-color: var(--vscode-focusBorder);
-            background-color: var(--vscode-list-hoverBackground);
-          }
-          .image-slot.filled.selected {
-            border: 2px solid var(--vscode-focusBorder);
-            background-color: var(--vscode-list-activeSelectionBackground);
+            border: none;
           }
           .image-slot img {
-            max-width: 86px;
-            max-height: 86px;
+            max-width: 90px;
+            max-height: 90px;
             object-fit: contain;
             position: relative;
             z-index: 1;
@@ -325,10 +316,10 @@ export class XCAssetsViewer {
             opacity: 0.5;
           }
           .slot-label {
-            margin-top: 8px;
             font-size: 11px;
             color: var(--vscode-descriptionForeground);
             text-align: center;
+            width: 90px;
           }
           .color-preview {
             width: 90px;
@@ -339,25 +330,28 @@ export class XCAssetsViewer {
             padding: 4px;
             background-clip: content-box;
           }
-          .color-variant-item {
+          .variant-item {
             border: 2px solid transparent;
             border-radius: 6px;
             overflow: hidden;
+            cursor: pointer;
           }
-          .color-variant-item.selected {
+          .variant-item.selected {
             border-color: var(--vscode-focusBorder);
           }
-          .color-variant-item .color-preview {
+          .variant-item .color-preview {
             margin: 4px auto 0 auto;
           }
-          .color-variant-item .preview-label {
+          .variant-item .preview-label,
+          .variant-item .slot-label {
             margin: 4px 0 0 0;
             padding: 4px 8px;
           }
-          .color-variant-item.selected .preview-label {
+          .variant-item.selected .preview-label,
+          .variant-item.selected .slot-label {
             background-color: var(--vscode-focusBorder);
             color: white;
-            margin: 4px 0 0 0;
+            font-weight: 600;
           }
           .pdf-preview-canvas {
             border: 1px solid var(--vscode-panel-border);
@@ -617,9 +611,9 @@ export class XCAssetsViewer {
 
                     if (isPdf) {
                       slotsHtml = \`
-                        <div style="display: flex; flex-direction: column; align-items: center;">
-                          <div class="image-slot filled" data-image-filename="\${img.filename}" data-image-uri="\${img.uri}" data-image-scale="All">
-                            <canvas style="max-width: 86px; max-height: 86px; position: relative; z-index: 1;"
+                        <div class="variant-item" data-image-filename="\${img.filename}" data-image-uri="\${img.uri}" data-image-scale="All" style="display: flex; flex-direction: column; align-items: center;">
+                          <div class="image-slot filled">
+                            <canvas style="max-width: 90px; max-height: 90px; position: relative; z-index: 1;"
                                     data-pdf-url="\${img.uri}"
                                     data-preview-pdf="true"></canvas>
                           </div>
@@ -628,8 +622,8 @@ export class XCAssetsViewer {
                       \`;
                     } else {
                       slotsHtml = \`
-                        <div style="display: flex; flex-direction: column; align-items: center;">
-                          <div class="image-slot filled" data-image-filename="\${img.filename}" data-image-uri="\${img.uri}" data-image-scale="All">
+                        <div class="variant-item" data-image-filename="\${img.filename}" data-image-uri="\${img.uri}" data-image-scale="All" style="display: flex; flex-direction: column; align-items: center;">
+                          <div class="image-slot filled">
                             <img src="\${img.uri}" alt="All" />
                           </div>
                           <div class="slot-label">All</div>
@@ -648,9 +642,9 @@ export class XCAssetsViewer {
                         // Filled slot
                         if (isPdf) {
                           return \`
-                            <div style="display: flex; flex-direction: column; align-items: center;">
-                              <div class="image-slot filled" data-image-filename="\${img.filename}" data-image-uri="\${img.uri}" data-image-scale="\${scale}">
-                                <canvas style="max-width: 86px; max-height: 86px; position: relative; z-index: 1;"
+                            <div class="variant-item" data-image-filename="\${img.filename}" data-image-uri="\${img.uri}" data-image-scale="\${scale}" style="display: flex; flex-direction: column; align-items: center;">
+                              <div class="image-slot filled">
+                                <canvas style="max-width: 90px; max-height: 90px; position: relative; z-index: 1;"
                                         data-pdf-url="\${img.uri}"
                                         data-preview-pdf="true"></canvas>
                               </div>
@@ -659,8 +653,8 @@ export class XCAssetsViewer {
                           \`;
                         } else {
                           return \`
-                            <div style="display: flex; flex-direction: column; align-items: center;">
-                              <div class="image-slot filled" data-image-filename="\${img.filename}" data-image-uri="\${img.uri}" data-image-scale="\${scale}">
+                            <div class="variant-item" data-image-filename="\${img.filename}" data-image-uri="\${img.uri}" data-image-scale="\${scale}" style="display: flex; flex-direction: column; align-items: center;">
+                              <div class="image-slot filled">
                                 <img src="\${img.uri}" alt="\${scale}" />
                               </div>
                               <div class="slot-label">\${scale}</div>
@@ -706,18 +700,18 @@ export class XCAssetsViewer {
               }
 
               // Add click handlers for image slots
-              panel.querySelectorAll('.image-slot.filled').forEach(slot => {
-                slot.addEventListener('click', async (e) => {
-                  // Remove selection from all slots
-                  panel.querySelectorAll('.image-slot.filled').forEach(s => {
-                    s.classList.remove('selected');
+              panel.querySelectorAll('.variant-item[data-image-filename]').forEach(item => {
+                item.addEventListener('click', async (e) => {
+                  // Remove selection from all image variants
+                  panel.querySelectorAll('.variant-item[data-image-filename]').forEach(v => {
+                    v.classList.remove('selected');
                   });
-                  // Select this slot
-                  slot.classList.add('selected');
+                  // Select this variant
+                  item.classList.add('selected');
 
-                  const filename = slot.dataset.imageFilename;
-                  const uri = slot.dataset.imageUri;
-                  const scale = slot.dataset.imageScale;
+                  const filename = item.dataset.imageFilename;
+                  const uri = item.dataset.imageUri;
+                  const scale = item.dataset.imageScale;
 
                   await renderImageVariantProperties(asset, filename, uri, scale);
                 });
@@ -758,7 +752,7 @@ export class XCAssetsViewer {
                   const label = labelParts.join('<br>');
 
                   return \`
-                    <div class="preview-item color-variant-item" data-color-index="\${colorItem.colorIndex}" style="cursor: pointer;">
+                    <div class="preview-item variant-item" data-color-index="\${colorItem.colorIndex}">
                       <div class="color-preview" style="background-color: \${colorValue}"></div>
                       <div class="preview-label">\${label}</div>
                     </div>
@@ -799,10 +793,10 @@ export class XCAssetsViewer {
               \`;
 
               // Add click handlers for color variants
-              panel.querySelectorAll('.color-variant-item').forEach(item => {
+              panel.querySelectorAll('.variant-item[data-color-index]').forEach(item => {
                 item.addEventListener('click', (e) => {
-                  // Remove selection from all variants
-                  panel.querySelectorAll('.color-variant-item').forEach(v => {
+                  // Remove selection from all color variants
+                  panel.querySelectorAll('.variant-item[data-color-index]').forEach(v => {
                     v.classList.remove('selected');
                   });
                   // Select this variant
