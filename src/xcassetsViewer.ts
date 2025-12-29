@@ -328,7 +328,7 @@ export class XCAssetsViewer {
             border-color: var(--vscode-focusBorder);
           }
           .color-variant-item .color-preview {
-            margin: 4px 4px 0 4px;
+            margin: 4px auto 0 auto;
           }
           .color-variant-item .preview-label {
             margin: 4px 0 0 0;
@@ -808,22 +808,7 @@ export class XCAssetsViewer {
               const a = components.alpha !== undefined ? parseFloat(components.alpha) : 1;
 
               componentsHtml = \`
-                <div style="margin-bottom: 8px;">
-                  <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 4px;">Red</div>
-                  <div class="property-value">\${r}</div>
-                </div>
-                <div style="margin-bottom: 8px;">
-                  <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 4px;">Green</div>
-                  <div class="property-value">\${g}</div>
-                </div>
-                <div style="margin-bottom: 8px;">
-                  <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 4px;">Blue</div>
-                  <div class="property-value">\${b}</div>
-                </div>
-                <div style="margin-bottom: 8px;">
-                  <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 4px;">Alpha</div>
-                  <div class="property-value">\${a}</div>
-                </div>
+                <div class="property-value">R: \${r}, G: \${g}, B: \${b}, A: \${a}</div>
               \`;
             }
 
