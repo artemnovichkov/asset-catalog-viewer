@@ -151,17 +151,24 @@ export class XCAssetsViewer {
       return null;
     }
 
-    let contents;
+    let contents: ImageContents;
     try {
       contents = JSON.parse(
         await fs.promises.readFile(contentsPath, 'utf8')
-      );
+      ) as ImageContents;
     } catch (error) {
       vscode.window.showErrorMessage(
         `Failed to parse ${path.basename(imageSetPath)}: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
       return null;
     }
+
+    // Validate structure
+    if (!contents.images || !Array.isArray(contents.images)) {
+      console.warn(`Invalid imageset structure: ${imageSetPath}`);
+      return null;
+    }
+
     const images: ImageVariant[] = [];
 
     for (const image of contents.images || []) {
@@ -195,17 +202,24 @@ export class XCAssetsViewer {
       return null;
     }
 
-    let contents;
+    let contents: AppIconContents;
     try {
       contents = JSON.parse(
         await fs.promises.readFile(contentsPath, 'utf8')
-      );
+      ) as AppIconContents;
     } catch (error) {
       vscode.window.showErrorMessage(
         `Failed to parse ${path.basename(appIconSetPath)}: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
       return null;
     }
+
+    // Validate structure
+    if (!contents.images || !Array.isArray(contents.images)) {
+      console.warn(`Invalid appiconset structure: ${appIconSetPath}`);
+      return null;
+    }
+
     const icons: AppIconVariant[] = [];
 
     for (const image of contents.images || []) {
@@ -240,11 +254,11 @@ export class XCAssetsViewer {
       return null;
     }
 
-    let contents;
+    let contents: ColorContents;
     try {
       contents = JSON.parse(
         await fs.promises.readFile(contentsPath, 'utf8')
-      );
+      ) as ColorContents;
     } catch (error) {
       vscode.window.showErrorMessage(
         `Failed to parse ${path.basename(colorSetPath)}: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -252,9 +266,15 @@ export class XCAssetsViewer {
       return null;
     }
 
+    // Validate structure
+    if (!contents.colors || !Array.isArray(contents.colors)) {
+      console.warn(`Invalid colorset structure: ${colorSetPath}`);
+      return null;
+    }
+
     return {
       name: path.basename(colorSetPath, '.colorset'),
-      colors: contents.colors || [],
+      colors: contents.colors as ColorDefinition[],
     };
   }
 
@@ -264,15 +284,21 @@ export class XCAssetsViewer {
       return null;
     }
 
-    let contents;
+    let contents: DataContents;
     try {
       contents = JSON.parse(
         await fs.promises.readFile(contentsPath, 'utf8')
-      );
+      ) as DataContents;
     } catch (error) {
       vscode.window.showErrorMessage(
         `Failed to parse ${path.basename(dataSetPath)}: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
+      return null;
+    }
+
+    // Validate structure
+    if (!contents.data || !Array.isArray(contents.data)) {
+      console.warn(`Invalid dataset structure: ${dataSetPath}`);
       return null;
     }
 
@@ -313,20 +339,20 @@ export class XCAssetsViewer {
     xcassetsPath: string
   ): string {
     // Convert items to webview format with URIs
-    const convertItems = (items: AssetItem[]): any[] => {
+    const convertItems = (items: AssetItem[]): ConvertedAssetItem[] => {
       return items.map(item => {
         if (item.type === 'folder') {
           return {
-            type: 'folder',
+            type: 'folder' as const,
             name: item.name,
-            path: item.path,
+            path: item.path || '',
             children: item.children ? convertItems(item.children) : []
           };
         } else if (item.type === 'imageset' && item.imageSet) {
           return {
-            type: 'image',
+            type: 'image' as const,
             name: item.imageSet.name,
-            path: item.path,
+            path: item.path || '',
             images: item.imageSet.images.map(img => ({
               ...img,
               uri: img.path ? webview.asWebviewUri(vscode.Uri.file(img.path)).toString() : '',
@@ -335,27 +361,27 @@ export class XCAssetsViewer {
           };
         } else if (item.type === 'colorset' && item.colorSet) {
           return {
-            type: 'color',
+            type: 'color' as const,
             name: item.colorSet.name,
-            path: item.path,
+            path: item.path || '',
             colors: item.colorSet.colors
           };
         } else if (item.type === 'dataset' && item.dataSet) {
           return {
-            type: 'data',
+            type: 'data' as const,
             name: item.dataSet.name,
-            path: item.path,
+            path: item.path || '',
             data: item.dataSet.data.map(d => ({
               ...d,
               uri: d.path ? webview.asWebviewUri(vscode.Uri.file(d.path)).toString() : '',
-              fsPath: d.path
+              fsPath: d.path || ''
             }))
           };
         } else if (item.type === 'appiconset' && item.appIconSet) {
           return {
-            type: 'appicon',
+            type: 'appicon' as const,
             name: item.appIconSet.name,
-            path: item.path,
+            path: item.path || '',
             icons: item.appIconSet.icons.map(icon => ({
               ...icon,
               uri: icon.path ? webview.asWebviewUri(vscode.Uri.file(icon.path)).toString() : '',
@@ -364,7 +390,7 @@ export class XCAssetsViewer {
           };
         }
         return null;
-      }).filter(item => item !== null);
+      }).filter((item): item is ConvertedAssetItem => item !== null);
     };
 
     const assetsData = {
@@ -2232,7 +2258,7 @@ export class XCAssetsViewer {
       </html>`;
   }
 
-  private getColorValue(color: any): string {
+  private getColorValue(color: ColorComponents | undefined): string {
     if (!color) {
       return '#000000';
     }
@@ -2242,7 +2268,7 @@ export class XCAssetsViewer {
       return '#000000';
     }
 
-    if (components.red !== undefined) {
+    if (components.red !== undefined && components.green !== undefined && components.blue !== undefined) {
       const r = Math.round(parseFloat(components.red) * 255);
       const g = Math.round(parseFloat(components.green) * 255);
       const b = Math.round(parseFloat(components.blue) * 255);
@@ -2252,6 +2278,115 @@ export class XCAssetsViewer {
     return '#000000';
   }
 }
+
+// Contents.json schema types
+interface ImageContents {
+  images?: Array<{
+    filename?: string;
+    scale?: string;
+    idiom?: string;
+    subtype?: string;
+  }>;
+}
+
+interface ColorContents {
+  colors?: Array<{
+    idiom: string;
+    color?: {
+      'color-space': string;
+      components: {
+        red?: string;
+        green?: string;
+        blue?: string;
+        alpha?: string;
+      };
+    };
+    appearances?: Array<{
+      appearance: string;
+      value: string;
+    }>;
+  }>;
+}
+
+interface AppIconContents {
+  images?: Array<{
+    filename?: string;
+    size?: string;
+    idiom?: string;
+    platform?: string;
+    appearances?: Array<{
+      appearance: string;
+      value: string;
+    }>;
+  }>;
+}
+
+interface DataContents {
+  data?: Array<{
+    filename?: string;
+    idiom?: string;
+  }>;
+}
+
+// Converted asset types
+interface ConvertedImageVariant {
+  filename: string;
+  scale?: string;
+  idiom: string;
+  subtype?: string;
+  path: string;
+  uri: string;
+  fsPath: string;
+}
+
+interface ColorDefinition {
+  idiom: string;
+  color?: ColorComponents;
+  appearances?: AppearanceVariant[];
+  subtype?: string;
+}
+
+interface ColorComponents {
+  'color-space': string;
+  components: {
+    red?: string;
+    green?: string;
+    blue?: string;
+    alpha?: string;
+  };
+}
+
+interface AppearanceVariant {
+  appearance: string;
+  value: string;
+}
+
+interface ConvertedDataItem {
+  filename: string;
+  idiom: string;
+  path?: string;
+  content?: string;
+  uri: string;
+  fsPath: string;
+}
+
+interface ConvertedAppIconVariant {
+  filename: string;
+  size?: string;
+  idiom: string;
+  platform?: string;
+  appearances: AppearanceVariant[];
+  path: string;
+  uri: string;
+  fsPath: string;
+}
+
+type ConvertedAssetItem =
+  | { type: 'folder'; name: string; path: string; children: ConvertedAssetItem[] }
+  | { type: 'image'; name: string; path: string; images: ConvertedImageVariant[] }
+  | { type: 'color'; name: string; path: string; colors: ColorDefinition[] }
+  | { type: 'data'; name: string; path: string; data: ConvertedDataItem[] }
+  | { type: 'appicon'; name: string; path: string; icons: ConvertedAppIconVariant[] };
 
 interface AssetCatalog {
   name: string;
@@ -2284,7 +2419,7 @@ interface ImageVariant {
 
 interface ColorSet {
   name: string;
-  colors: any[];
+  colors: ColorDefinition[];
 }
 
 interface DataSet {
@@ -2309,6 +2444,6 @@ interface AppIconVariant {
   size?: string;
   idiom: string;
   platform?: string;
-  appearances: any[];
+  appearances: AppearanceVariant[];
   path: string;
 }
