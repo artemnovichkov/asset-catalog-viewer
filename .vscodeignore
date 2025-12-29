@@ -16,4 +16,5 @@ tsconfig.json
 AssetExample/**
 *.md
 !README.md
-
+.claude/**
+.github/**
