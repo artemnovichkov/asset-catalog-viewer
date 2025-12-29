@@ -1,6 +1,6 @@
 # Asset Catalog Viewer
 
-[![Install](https://img.shields.io/badge/Install-VS%20Code-blue?style=for-the-badge&logo=visual-studio-code)](vscode:extension/artemnovichkov.asset-catalog-viewer)
+[![VS Marketplace](https://img.shields.io/visual-studio-marketplace/v/artemnovichkov.asset-catalog-viewer?style=for-the-badge&logo=visual-studio-code&label=Install)](https://marketplace.visualstudio.com/items?itemName=artemnovichkov.asset-catalog-viewer)
 
 A VS Code extension that provides an Xcode-like interface for previewing and inspecting `.xcassets` (Asset Catalog) directories. View your iOS, macOS, and other Apple platform assets with the same visual experience you get in Xcode.
 
