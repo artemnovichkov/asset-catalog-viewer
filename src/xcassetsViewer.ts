@@ -24,9 +24,11 @@ export class XCAssetsViewer {
     panel.webview.html = this.getHtmlForWebview(panel.webview, assets, xcassetsPath);
 
     panel.webview.onDidReceiveMessage(message => {
+      const { spawn } = require('child_process');
       if (message.command === 'quicklook' && message.filePath) {
-        const { spawn } = require('child_process');
         spawn('qlmanage', ['-p', message.filePath], { detached: true, stdio: 'ignore' }).unref();
+      } else if (message.command === 'showInFinder' && message.filePath) {
+        spawn('open', ['-R', message.filePath], { detached: true, stdio: 'ignore' }).unref();
       }
     });
   }
@@ -220,12 +222,14 @@ export class XCAssetsViewer {
           return {
             type: 'folder',
             name: item.name,
+            path: item.path,
             children: item.children ? convertItems(item.children) : []
           };
         } else if (item.type === 'imageset' && item.imageSet) {
           return {
             type: 'image',
             name: item.imageSet.name,
+            path: item.path,
             images: item.imageSet.images.map(img => ({
               ...img,
               uri: img.path ? webview.asWebviewUri(vscode.Uri.file(img.path)).toString() : '',
@@ -236,18 +240,21 @@ export class XCAssetsViewer {
           return {
             type: 'color',
             name: item.colorSet.name,
+            path: item.path,
             colors: item.colorSet.colors
           };
         } else if (item.type === 'dataset' && item.dataSet) {
           return {
             type: 'data',
             name: item.dataSet.name,
+            path: item.path,
             data: item.dataSet.data
           };
         } else if (item.type === 'appiconset' && item.appIconSet) {
           return {
             type: 'appicon',
             name: item.appIconSet.name,
+            path: item.path,
             icons: item.appIconSet.icons.map(icon => ({
               ...icon,
               uri: icon.path ? webview.asWebviewUri(vscode.Uri.file(icon.path)).toString() : '',
@@ -553,6 +560,32 @@ export class XCAssetsViewer {
             color: var(--vscode-descriptionForeground);
             padding: 40px 20px;
           }
+
+          /* Context Menu */
+          .context-menu {
+            position: fixed;
+            background-color: var(--vscode-menu-background);
+            border: 1px solid var(--vscode-menu-border);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            border-radius: 4px;
+            padding: 4px 0;
+            min-width: 180px;
+            z-index: 1000;
+            display: none;
+          }
+          .context-menu-item {
+            padding: 6px 20px;
+            cursor: pointer;
+            color: var(--vscode-menu-foreground);
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+          }
+          .context-menu-item:hover {
+            background-color: var(--vscode-menu-selectionBackground);
+            color: var(--vscode-menu-selectionForeground);
+          }
         </style>
       </head>
       <body>
@@ -564,6 +597,13 @@ export class XCAssetsViewer {
         <div class="resizer" id="rightResizer"></div>
         <div class="right-panel" id="propertiesPanel">
           <div class="empty-state">No asset selected</div>
+        </div>
+
+        <div class="context-menu" id="contextMenu">
+          <div class="context-menu-item" id="showInFinder">
+            <i class="codicon codicon-folder-opened"></i>
+            <span>Show in Finder</span>
+          </div>
         </div>
 
         <script>
@@ -678,7 +718,7 @@ export class XCAssetsViewer {
                   const isExpanded = expandedFolders.has(itemPath);
                   const chevronClass = isExpanded ? 'expanded' : '';
                   html += \`
-                    <div class="asset-list-item folder" data-folder-path="\${itemPath}" style="padding-left: \${indent + 8}px;">
+                    <div class="asset-list-item folder" data-folder-path="\${itemPath}" data-path="\${item.path || ''}" style="padding-left: \${indent + 8}px;">
                       <i class="codicon codicon-chevron-right folder-chevron \${chevronClass}"></i>
                       <i class="codicon codicon-folder asset-icon"></i>
                       <span>\${item.name}</span>
@@ -725,7 +765,7 @@ export class XCAssetsViewer {
                     iconHtml = \`<i class="codicon codicon-database asset-icon"></i>\`;
                   }
 
-                  html += \`<div class="asset-list-item" data-index="\${assetIndex}" style="padding-left: \${indent + 24 + 8}px;">
+                  html += \`<div class="asset-list-item" data-index="\${assetIndex}" data-path="\${item.path || ''}" style="padding-left: \${indent + 24 + 8}px;">
                     \${iconHtml}
                     <span>\${item.name}</span>
                   </div>\`;
@@ -1763,6 +1803,35 @@ export class XCAssetsViewer {
                   }
                 }
               }
+            });
+
+            // Context menu handling
+            const contextMenu = document.getElementById('contextMenu');
+            let contextMenuTargetPath = '';
+
+            // Show context menu on right-click
+            assetList.addEventListener('contextmenu', (e) => {
+              e.preventDefault();
+              const target = e.target.closest('.asset-list-item');
+              if (target && target.dataset.path) {
+                contextMenuTargetPath = target.dataset.path;
+                contextMenu.style.display = 'block';
+                contextMenu.style.left = e.clientX + 'px';
+                contextMenu.style.top = e.clientY + 'px';
+              }
+            });
+
+            // Hide context menu on click elsewhere
+            document.addEventListener('click', () => {
+              contextMenu.style.display = 'none';
+            });
+
+            // Handle "Show in Finder" click
+            document.getElementById('showInFinder').addEventListener('click', () => {
+              if (contextMenuTargetPath) {
+                vscode.postMessage({ command: 'showInFinder', filePath: contextMenuTargetPath });
+              }
+              contextMenu.style.display = 'none';
             });
           })();
         </script>
