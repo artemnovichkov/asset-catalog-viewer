@@ -22,6 +22,13 @@ export class XCAssetsViewer {
 
     const assets = await this.parseXCAssets(xcassetsPath);
     panel.webview.html = this.getHtmlForWebview(panel.webview, assets, xcassetsPath);
+
+    panel.webview.onDidReceiveMessage(message => {
+      if (message.command === 'quicklook' && message.filePath) {
+        const { spawn } = require('child_process');
+        spawn('qlmanage', ['-p', message.filePath], { detached: true, stdio: 'ignore' }).unref();
+      }
+    });
   }
 
   private async parseXCAssets(xcassetsPath: string): Promise<AssetCatalog> {
@@ -180,7 +187,8 @@ export class XCAssetsViewer {
             name: item.imageSet.name,
             images: item.imageSet.images.map(img => ({
               ...img,
-              uri: img.path ? webview.asWebviewUri(vscode.Uri.file(img.path)).toString() : ''
+              uri: img.path ? webview.asWebviewUri(vscode.Uri.file(img.path)).toString() : '',
+              fsPath: img.path
             }))
           };
         } else if (item.type === 'colorset' && item.colorSet) {
@@ -780,7 +788,7 @@ export class XCAssetsViewer {
 
                     if (isPdf) {
                       slotsHtml = \`
-                        <div class="variant-item" data-image-filename="\${img.filename}" data-image-uri="\${img.uri}" data-image-scale="All" style="display: flex; flex-direction: column; align-items: center;">
+                        <div class="variant-item" data-image-filename="\${img.filename}" data-image-uri="\${img.uri}" data-image-fspath="\${img.fsPath || ''}" data-image-scale="All" style="display: flex; flex-direction: column; align-items: center;">
                           <div class="image-slot filled">
                             <canvas style="max-width: 90px; max-height: 90px; position: relative; z-index: 1;"
                                     data-pdf-url="\${img.uri}"
@@ -791,7 +799,7 @@ export class XCAssetsViewer {
                       \`;
                     } else {
                       slotsHtml = \`
-                        <div class="variant-item" data-image-filename="\${img.filename}" data-image-uri="\${img.uri}" data-image-scale="All" style="display: flex; flex-direction: column; align-items: center;">
+                        <div class="variant-item" data-image-filename="\${img.filename}" data-image-uri="\${img.uri}" data-image-fspath="\${img.fsPath || ''}" data-image-scale="All" style="display: flex; flex-direction: column; align-items: center;">
                           <div class="image-slot filled">
                             <img src="\${img.uri}" alt="All" />
                           </div>
@@ -811,7 +819,7 @@ export class XCAssetsViewer {
                         // Filled slot
                         if (isPdf) {
                           return \`
-                            <div class="variant-item" data-image-filename="\${img.filename}" data-image-uri="\${img.uri}" data-image-scale="\${scale}" style="display: flex; flex-direction: column; align-items: center;">
+                            <div class="variant-item" data-image-filename="\${img.filename}" data-image-uri="\${img.uri}" data-image-fspath="\${img.fsPath || ''}" data-image-scale="\${scale}" style="display: flex; flex-direction: column; align-items: center;">
                               <div class="image-slot filled">
                                 <canvas style="max-width: 90px; max-height: 90px; position: relative; z-index: 1;"
                                         data-pdf-url="\${img.uri}"
@@ -822,7 +830,7 @@ export class XCAssetsViewer {
                           \`;
                         } else {
                           return \`
-                            <div class="variant-item" data-image-filename="\${img.filename}" data-image-uri="\${img.uri}" data-image-scale="\${scale}" style="display: flex; flex-direction: column; align-items: center;">
+                            <div class="variant-item" data-image-filename="\${img.filename}" data-image-uri="\${img.uri}" data-image-fspath="\${img.fsPath || ''}" data-image-scale="\${scale}" style="display: flex; flex-direction: column; align-items: center;">
                               <div class="image-slot filled">
                                 <img src="\${img.uri}" alt="\${scale}" />
                               </div>
@@ -1429,6 +1437,8 @@ export class XCAssetsViewer {
           }
 
           // Initialize
+          const vscode = acquireVsCodeApi();
+
           (async () => {
             initResizers();
             await renderAssetList();
@@ -1454,6 +1464,22 @@ export class XCAssetsViewer {
                   target.classList.contains('device-group') ||
                   target.classList.contains('slot-grid')) {
                 deselectVariant();
+              }
+            });
+
+            // Quick Look with Space key
+            document.addEventListener('keydown', (e) => {
+              if (e.code === 'Space' && !e.repeat) {
+                e.preventDefault();
+
+                // Check if variant selected
+                const selectedVariant = document.querySelector('.variant-item.selected');
+                if (selectedVariant) {
+                  const fsPath = selectedVariant.dataset.imageFspath;
+                  if (fsPath) {
+                    vscode.postMessage({ command: 'quicklook', filePath: fsPath });
+                  }
+                }
               }
             });
           })();
