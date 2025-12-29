@@ -76,15 +76,16 @@ export class XCAssetsViewer {
     const images: ImageVariant[] = [];
 
     for (const image of contents.images || []) {
-      if (image.filename) {
-        const imagePath = path.join(imageSetPath, image.filename);
-        images.push({
-          filename: image.filename,
-          scale: image.scale || '1x',
-          idiom: image.idiom || 'universal',
-          path: imagePath,
-        });
-      }
+      const imagePath = image.filename
+        ? path.join(imageSetPath, image.filename)
+        : undefined;
+      images.push({
+        filename: image.filename || '',
+        scale: image.scale,
+        idiom: image.idiom || 'universal',
+        subtype: image.subtype,
+        path: imagePath || '',
+      });
     }
 
     return {
@@ -137,7 +138,7 @@ export class XCAssetsViewer {
         type: 'image',
         images: imageSet.images.map(img => ({
           ...img,
-          uri: webview.asWebviewUri(vscode.Uri.file(img.path)).toString()
+          uri: img.path ? webview.asWebviewUri(vscode.Uri.file(img.path)).toString() : ''
         }))
       })),
       colorSets: catalog.colorSets.map(colorSet => ({
@@ -251,6 +252,64 @@ export class XCAssetsViewer {
             border: 1px solid var(--vscode-panel-border);
             border-radius: 4px;
           }
+          .device-group {
+            width: 100%;
+            margin-bottom: 30px;
+          }
+          .device-group-label {
+            text-align: center;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--vscode-descriptionForeground);
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--vscode-panel-border);
+          }
+          .device-group:first-child .device-group-label {
+            border-top: none;
+            margin-top: 0;
+            padding-top: 0;
+          }
+          .slot-grid {
+            display: flex;
+            gap: 40px;
+            justify-content: center;
+            margin-bottom: 20px;
+          }
+          .image-slot {
+            width: 90px;
+            height: 90px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--vscode-editor-background);
+            border-radius: 4px;
+            position: relative;
+          }
+          .image-slot.empty {
+            border: 2px dashed var(--vscode-panel-border);
+          }
+          .image-slot.filled {
+            border: 1px solid var(--vscode-panel-border);
+          }
+          .image-slot img {
+            max-width: 86px;
+            max-height: 86px;
+            object-fit: contain;
+            position: relative;
+            z-index: 1;
+          }
+          .image-slot .plus-icon {
+            font-size: 24px;
+            color: var(--vscode-descriptionForeground);
+            opacity: 0.5;
+          }
+          .slot-label {
+            margin-top: 8px;
+            font-size: 11px;
+            color: var(--vscode-descriptionForeground);
+            text-align: center;
+          }
           .color-preview {
             width: 90px;
             height: 90px;
@@ -359,11 +418,16 @@ export class XCAssetsViewer {
             listEl.innerHTML = allAssets.map((asset, idx) => {
               let iconHtml = '';
               if (asset.type === 'image' && asset.images.length > 0) {
-                const isPdf = asset.images[0].filename.toLowerCase().endsWith('.pdf');
-                if (isPdf) {
-                  iconHtml = \`<canvas class="asset-thumbnail-canvas" data-pdf-url="\${asset.images[0].uri}" data-idx="\${idx}"></canvas>\`;
+                const firstImage = asset.images.find(img => img.filename);
+                if (firstImage) {
+                  const isPdf = firstImage.filename.toLowerCase().endsWith('.pdf');
+                  if (isPdf) {
+                    iconHtml = \`<canvas class="asset-thumbnail-canvas" data-pdf-url="\${firstImage.uri}" data-idx="\${idx}"></canvas>\`;
+                  } else {
+                    iconHtml = \`<img src="\${firstImage.uri}" class="asset-thumbnail" alt="\${asset.name}" />\`;
+                  }
                 } else {
-                  iconHtml = \`<img src="\${asset.images[0].uri}" class="asset-thumbnail" alt="\${asset.name}" />\`;
+                  iconHtml = \`<i class="codicon codicon-file-media asset-icon"></i>\`;
                 }
               } else if (asset.type === 'color') {
                 const color = asset.colors[0] || {};
@@ -411,36 +475,139 @@ export class XCAssetsViewer {
             const panel = document.getElementById('previewPanel');
 
             if (asset.type === 'image') {
-              const imagesHtml = asset.images.map((img, idx) => {
-                const isPdf = img.filename.toLowerCase().endsWith('.pdf');
-                if (isPdf) {
+              // Group images by idiom
+              const idiomGroups = {};
+              const idiomOrder = ['universal', 'iphone', 'ipad', 'mac-catalyst', 'mac', 'vision', 'watch', 'tv'];
+
+              asset.images.forEach(img => {
+                let idiomKey = img.idiom;
+                if (img.subtype === 'mac-catalyst') {
+                  idiomKey = 'mac-catalyst';
+                }
+                if (!idiomGroups[idiomKey]) {
+                  idiomGroups[idiomKey] = [];
+                }
+                idiomGroups[idiomKey].push(img);
+              });
+
+              // Generate HTML for each idiom group
+              const deviceLabels = {
+                'universal': 'Universal',
+                'iphone': 'iPhone',
+                'ipad': 'iPad',
+                'mac-catalyst': 'Mac Catalyst Scaled',
+                'mac': 'Mac',
+                'vision': 'Apple Vision',
+                'watch': 'Apple Watch',
+                'tv': 'Apple TV'
+              };
+
+              const groupsHtml = idiomOrder
+                .filter(idiom => idiomGroups[idiom])
+                .map(idiom => {
+                  const images = idiomGroups[idiom];
+
+                  // Check if this is a single universal image without scale info
+                  const isSingleUniversal = idiom === 'universal' &&
+                                           images.length === 1 &&
+                                           images[0].filename &&
+                                           !images[0].scale;
+
+                  let slotsHtml = '';
+
+                  if (isSingleUniversal) {
+                    // Single image labeled "All"
+                    const img = images[0];
+                    const isPdf = img.filename.toLowerCase().endsWith('.pdf');
+
+                    if (isPdf) {
+                      slotsHtml = \`
+                        <div style="display: flex; flex-direction: column; align-items: center;">
+                          <div class="image-slot filled">
+                            <canvas style="max-width: 86px; max-height: 86px; position: relative; z-index: 1;"
+                                    data-pdf-url="\${img.uri}"
+                                    data-preview-pdf="true"></canvas>
+                          </div>
+                          <div class="slot-label">All</div>
+                        </div>
+                      \`;
+                    } else {
+                      slotsHtml = \`
+                        <div style="display: flex; flex-direction: column; align-items: center;">
+                          <div class="image-slot filled">
+                            <img src="\${img.uri}" alt="All" />
+                          </div>
+                          <div class="slot-label">All</div>
+                        </div>
+                      \`;
+                    }
+                  } else {
+                    // Standard scale slots (1x, 2x, 3x)
+                    const scaleOrder = ['1x', '2x', '3x'];
+
+                    slotsHtml = scaleOrder.map(scale => {
+                      const img = images.find(i => i.scale === scale);
+                      const isPdf = img?.filename?.toLowerCase().endsWith('.pdf');
+
+                      if (img && img.filename) {
+                        // Filled slot
+                        if (isPdf) {
+                          return \`
+                            <div style="display: flex; flex-direction: column; align-items: center;">
+                              <div class="image-slot filled">
+                                <canvas style="max-width: 86px; max-height: 86px; position: relative; z-index: 1;"
+                                        data-pdf-url="\${img.uri}"
+                                        data-preview-pdf="true"></canvas>
+                              </div>
+                              <div class="slot-label">\${scale}</div>
+                            </div>
+                          \`;
+                        } else {
+                          return \`
+                            <div style="display: flex; flex-direction: column; align-items: center;">
+                              <div class="image-slot filled">
+                                <img src="\${img.uri}" alt="\${scale}" />
+                              </div>
+                              <div class="slot-label">\${scale}</div>
+                            </div>
+                          \`;
+                        }
+                      } else {
+                        // Empty slot
+                        return \`
+                          <div style="display: flex; flex-direction: column; align-items: center;">
+                            <div class="image-slot empty">
+                              <span class="plus-icon">+</span>
+                            </div>
+                            <div class="slot-label">\${scale}</div>
+                          </div>
+                        \`;
+                      }
+                    }).join('');
+                  }
+
                   return \`
-                    <div class="preview-item">
-                      <canvas class="pdf-preview-canvas" data-pdf-url="\${img.uri}" data-img-idx="\${idx}"></canvas>
-                      <div class="preview-label">\${img.scale} - \${img.idiom}</div>
+                    <div class="device-group">
+                      <div class="slot-grid">\${slotsHtml}</div>
+                      <div class="device-group-label">\${deviceLabels[idiom]}</div>
                     </div>
                   \`;
-                }
-                return \`
-                  <div class="preview-item">
-                    <img src="\${img.uri}" alt="\${img.filename}" />
-                    <div class="preview-label">\${img.scale} - \${img.idiom}</div>
-                  </div>
-                \`;
-              }).join('');
+                }).join('');
 
               panel.innerHTML = \`
                 <div class="preview-container">
                   <div class="preview-title">\${asset.name}</div>
-                  <div class="preview-content">\${imagesHtml}</div>
+                  <div class="preview-content" style="flex-direction: column; width: 100%;">
+                    \${groupsHtml}
+                  </div>
                 </div>
               \`;
 
               // Render PDF previews
-              const pdfCanvases = panel.querySelectorAll('canvas[data-pdf-url]');
+              const pdfCanvases = panel.querySelectorAll('canvas[data-preview-pdf]');
               for (const canvas of pdfCanvases) {
                 const pdfUrl = canvas.dataset.pdfUrl;
-                await renderPdfToCanvas(pdfUrl, canvas, 1.5);
+                await renderPdfToCanvas(pdfUrl, canvas, 0.5);
               }
             } else if (asset.type === 'color') {
               // Group colors by idiom (mac-catalyst goes under ipad)
@@ -494,7 +661,7 @@ export class XCAssetsViewer {
                 const idiomTitle = idiomTitles[idiom] || idiom;
                 return \`
                   <div style="width: 100%; margin-bottom: 30px;">
-                    <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 15px;">
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 15px; justify-content: center;">
                       \${colorsHtml}
                     </div>
                     <div style="border-top: 1px solid var(--vscode-panel-border); padding-top: 10px;">
@@ -715,8 +882,9 @@ interface ImageSet {
 
 interface ImageVariant {
   filename: string;
-  scale: string;
+  scale?: string;
   idiom: string;
+  subtype?: string;
   path: string;
 }
 
