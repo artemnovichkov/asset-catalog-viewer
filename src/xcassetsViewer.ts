@@ -319,6 +319,26 @@ export class XCAssetsViewer {
             padding: 4px;
             background-clip: content-box;
           }
+          .color-variant-item {
+            border: 2px solid transparent;
+            border-radius: 6px;
+            overflow: hidden;
+          }
+          .color-variant-item.selected {
+            border-color: var(--vscode-focusBorder);
+          }
+          .color-variant-item .color-preview {
+            margin: 4px 4px 0 4px;
+          }
+          .color-variant-item .preview-label {
+            margin: 4px 0 0 0;
+            padding: 4px 8px;
+          }
+          .color-variant-item.selected .preview-label {
+            background-color: var(--vscode-focusBorder);
+            color: white;
+            margin: 4px 0 0 0;
+          }
           .pdf-preview-canvas {
             border: 1px solid var(--vscode-panel-border);
             border-radius: 4px;
@@ -612,12 +632,12 @@ export class XCAssetsViewer {
             } else if (asset.type === 'color') {
               // Group colors by idiom (mac-catalyst goes under ipad)
               const idiomGroups = {};
-              asset.colors.forEach(colorItem => {
+              asset.colors.forEach((colorItem, idx) => {
                 const idiom = colorItem.idiom || 'universal';
                 if (!idiomGroups[idiom]) {
                   idiomGroups[idiom] = [];
                 }
-                idiomGroups[idiom].push(colorItem);
+                idiomGroups[idiom].push({ ...colorItem, colorIndex: idx });
               });
 
               // Generate HTML for each idiom group
@@ -640,7 +660,7 @@ export class XCAssetsViewer {
                   const label = \`\${label1}<br>\${label2}\`;
 
                   return \`
-                    <div class="preview-item">
+                    <div class="preview-item color-variant-item" data-color-index="\${colorItem.colorIndex}" style="cursor: pointer;">
                       <div class="color-preview" style="background-color: \${colorValue}"></div>
                       <div class="preview-label">\${label}</div>
                     </div>
@@ -679,6 +699,27 @@ export class XCAssetsViewer {
                   </div>
                 </div>
               \`;
+
+              // Add click handlers for color variants
+              panel.querySelectorAll('.color-variant-item').forEach(item => {
+                item.addEventListener('click', (e) => {
+                  // Remove selection from all variants
+                  panel.querySelectorAll('.color-variant-item').forEach(v => {
+                    v.classList.remove('selected');
+                  });
+                  // Select this variant
+                  item.classList.add('selected');
+
+                  const colorIndex = parseInt(item.dataset.colorIndex);
+                  renderColorProperties(asset, colorIndex);
+                });
+              });
+
+              // Select first color variant by default
+              const firstVariant = panel.querySelector('.color-variant-item');
+              if (firstVariant) {
+                firstVariant.classList.add('selected');
+              }
             } else if (asset.type === 'data') {
               panel.innerHTML = \`
                 <div class="preview-container">
@@ -689,6 +730,171 @@ export class XCAssetsViewer {
                 </div>
               \`;
             }
+          }
+
+          // Render color properties for specific variant
+          function renderColorProperties(asset, colorIndex) {
+            const panel = document.getElementById('propertiesPanel');
+            const colorItem = asset.colors[colorIndex];
+
+            // Collect unique idioms and appearances
+            const idioms = new Set();
+            const hasLuminosity = new Set();
+            const hasContrast = new Set();
+            let gamut = 'Any';
+
+            asset.colors.forEach(item => {
+              if (item.subtype === 'mac-catalyst') {
+                idioms.add('mac-catalyst');
+              } else {
+                idioms.add(item.idiom || 'universal');
+              }
+
+              if (item.color?.['color-space']) {
+                gamut = item.color['color-space'].toUpperCase();
+              }
+
+              const appearances = item.appearances || [];
+              appearances.forEach(app => {
+                if (app.appearance === 'luminosity') {
+                  hasLuminosity.add(app.value);
+                } else if (app.appearance === 'contrast') {
+                  hasContrast.add(app.value);
+                }
+              });
+            });
+
+            // Device checkboxes
+            const allDevices = [
+              { id: 'iphone', label: 'iPhone' },
+              { id: 'ipad', label: 'iPad' },
+              { id: 'mac-catalyst', label: 'Mac Catalyst Scaled' },
+              { id: 'car', label: 'CarPlay' },
+              { id: 'vision', label: 'Apple Vision' },
+              { id: 'watch', label: 'Apple Watch' },
+              { id: 'tv', label: 'Apple TV' }
+            ];
+
+            const devicesHtml = allDevices.map(device => {
+              const checked = idioms.has(device.id) ? '☑' : '☐';
+              const indent = device.id === 'mac-catalyst' ? 'padding-left: 16px;' : '';
+              return \`<div style="padding: 2px 0; \${indent}">\${checked} \${device.label}</div>\`;
+            }).join('');
+
+            // Appearances
+            let appearancesText = 'None';
+            if (hasLuminosity.has('dark') || hasContrast.has('high')) {
+              const parts = [];
+              if (hasLuminosity.has('dark')) parts.push('Any, Dark');
+              if (hasContrast.has('high')) parts.push('High Contrast');
+              appearancesText = parts.join(', ');
+            }
+
+            const universalHtml = idioms.has('universal')
+              ? '<div style="padding: 2px 0; margin-bottom: 4px;">☑ Universal</div>'
+              : '';
+
+            // Get color space and components for selected variant
+            const color = colorItem.color || {};
+            const colorSpace = color['color-space'] || 'srgb';
+            const components = color.components || {};
+
+            // Format components
+            let componentsHtml = '';
+            if (components.red !== undefined) {
+              const r = parseFloat(components.red);
+              const g = parseFloat(components.green);
+              const b = parseFloat(components.blue);
+              const a = components.alpha !== undefined ? parseFloat(components.alpha) : 1;
+
+              componentsHtml = \`
+                <div style="margin-bottom: 8px;">
+                  <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 4px;">Red</div>
+                  <div class="property-value">\${r}</div>
+                </div>
+                <div style="margin-bottom: 8px;">
+                  <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 4px;">Green</div>
+                  <div class="property-value">\${g}</div>
+                </div>
+                <div style="margin-bottom: 8px;">
+                  <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 4px;">Blue</div>
+                  <div class="property-value">\${b}</div>
+                </div>
+                <div style="margin-bottom: 8px;">
+                  <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 4px;">Alpha</div>
+                  <div class="property-value">\${a}</div>
+                </div>
+              \`;
+            }
+
+            panel.innerHTML = \`
+              <div class="property-section">
+                <div class="property-title">Color Set</div>
+                <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 12px;">
+                  Name
+                </div>
+                <div class="property-value">\${asset.name}</div>
+              </div>
+              <div class="property-section">
+                <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">
+                  Devices
+                </div>
+                <div style="font-size: 12px; line-height: 1.5;">
+                  \${universalHtml}
+                  \${devicesHtml}
+                </div>
+              </div>
+              <div class="property-section">
+                <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">
+                  Appearances
+                </div>
+                <div class="property-value">\${appearancesText}</div>
+              </div>
+              <div class="property-section">
+                <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">
+                  Gamut
+                </div>
+                <div class="property-value">\${gamut}</div>
+              </div>
+              <div class="property-section">
+                <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">
+                  Direction
+                </div>
+                <div class="property-value">Fixed</div>
+              </div>
+              <div class="property-section">
+                <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">
+                  Width Class
+                </div>
+                <div class="property-value">Any</div>
+              </div>
+              <div class="property-section">
+                <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">
+                  Height Class
+                </div>
+                <div class="property-value">Any</div>
+              </div>
+              <div class="property-section">
+                <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">
+                  Memory
+                </div>
+                <div class="property-value">None</div>
+              </div>
+              <div class="property-section">
+                <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">
+                  Graphics
+                </div>
+                <div class="property-value">None</div>
+              </div>
+              <div class="property-section">
+                <div class="property-title">Color Space</div>
+                <div class="property-value">\${colorSpace}</div>
+              </div>
+              <div class="property-section">
+                <div class="property-title">Components</div>
+                \${componentsHtml}
+              </div>
+            \`;
           }
 
           // Render properties
@@ -718,123 +924,8 @@ export class XCAssetsViewer {
                 </div>
               \`;
             } else if (asset.type === 'color') {
-              // Collect unique idioms and appearances
-              const idioms = new Set();
-              const hasLuminosity = new Set();
-              const hasContrast = new Set();
-              let gamut = 'Any';
-
-              asset.colors.forEach(colorItem => {
-                if (colorItem.subtype === 'mac-catalyst') {
-                  idioms.add('mac-catalyst');
-                } else {
-                  idioms.add(colorItem.idiom || 'universal');
-                }
-
-                if (colorItem.color?.['color-space']) {
-                  gamut = colorItem.color['color-space'].toUpperCase();
-                }
-
-                const appearances = colorItem.appearances || [];
-                appearances.forEach(app => {
-                  if (app.appearance === 'luminosity') {
-                    hasLuminosity.add(app.value);
-                  } else if (app.appearance === 'contrast') {
-                    hasContrast.add(app.value);
-                  }
-                });
-              });
-
-              // Device checkboxes
-              const allDevices = [
-                { id: 'iphone', label: 'iPhone' },
-                { id: 'ipad', label: 'iPad' },
-                { id: 'mac-catalyst', label: 'Mac Catalyst Scaled' },
-                { id: 'car', label: 'CarPlay' },
-                { id: 'vision', label: 'Apple Vision' },
-                { id: 'watch', label: 'Apple Watch' },
-                { id: 'tv', label: 'Apple TV' }
-              ];
-
-              const devicesHtml = allDevices.map(device => {
-                const checked = idioms.has(device.id) ? '☑' : '☐';
-                const indent = device.id === 'mac-catalyst' ? 'padding-left: 16px;' : '';
-                return \`<div style="padding: 2px 0; \${indent}">\${checked} \${device.label}</div>\`;
-              }).join('');
-
-              // Appearances - determine what appearances are present
-              let appearancesText = 'None';
-              if (hasLuminosity.has('dark') || hasContrast.has('high')) {
-                const parts = [];
-                if (hasLuminosity.has('dark')) parts.push('Any, Dark');
-                if (hasContrast.has('high')) parts.push('High Contrast');
-                appearancesText = parts.join(', ');
-              }
-
-              const universalHtml = idioms.has('universal')
-                ? '<div style="padding: 2px 0; margin-bottom: 4px;">☑ Universal</div>'
-                : '';
-
-              panel.innerHTML = \`
-                <div class="property-section">
-                  <div class="property-title">Color Set</div>
-                  <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 12px;">
-                    Name
-                  </div>
-                  <div class="property-value">\${asset.name}</div>
-                </div>
-                <div class="property-section">
-                  <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">
-                    Devices
-                  </div>
-                  <div style="font-size: 12px; line-height: 1.5;">
-                    \${universalHtml}
-                    \${devicesHtml}
-                  </div>
-                </div>
-                <div class="property-section">
-                  <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">
-                    Appearances
-                  </div>
-                  <div class="property-value">\${appearancesText}</div>
-                </div>
-                <div class="property-section">
-                  <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">
-                    Gamut
-                  </div>
-                  <div class="property-value">\${gamut}</div>
-                </div>
-                <div class="property-section">
-                  <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">
-                    Direction
-                  </div>
-                  <div class="property-value">Fixed</div>
-                </div>
-                <div class="property-section">
-                  <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">
-                    Width Class
-                  </div>
-                  <div class="property-value">Any</div>
-                </div>
-                <div class="property-section">
-                  <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">
-                    Height Class
-                  </div>
-                  <div class="property-value">Any</div>
-                </div>
-                <div class="property-section">
-                  <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">
-                    Memory
-                  </div>
-                  <div class="property-value">None</div>
-                </div>
-                <div class="property-section">
-                  <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">
-                    Graphics
-                  </div>
-                  <div class="property-value">None</div>
-                </div>
-              \`;
+              // Use renderColorProperties for first variant
+              renderColorProperties(asset, 0);
             } else if (asset.type === 'data') {
               panel.innerHTML = \`
                 <div class="property-section">
