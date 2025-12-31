@@ -1,8 +1,13 @@
 # Asset Catalog Viewer
 
-[![VS Marketplace](https://img.shields.io/visual-studio-marketplace/v/artemnovichkov.asset-catalog-viewer?style=for-the-badge&logo=visual-studio-code&label=Install)](https://marketplace.visualstudio.com/items?itemName=artemnovichkov.asset-catalog-viewer)
+[![VS Marketplace](https://img.shields.io/visual-studio-marketplace/v/artemnovichkov.asset-catalog-viewer?style=for-the-badge&logo=visual-studio-code&label=VS%20Code)](https://marketplace.visualstudio.com/items?itemName=artemnovichkov.asset-catalog-viewer)
+[![Cursor](https://img.shields.io/badge/Cursor-Install-blue?style=for-the-badge&logo=cursor)](https://open-vsx.org/extension/artemnovichkov/asset-catalog-viewer)
 
-A VS Code extension that provides an Xcode-like interface for previewing and inspecting `.xcassets` (Asset Catalog) directories. View your iOS, macOS, and other Apple platform assets with the same visual experience you get in Xcode.
+[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en-US/install-mcp?name=postgres&config=eyJjb21tYW5kIjoibnB4IC15IEBtb2RlbGNvbnRleHRwcm90b2NvbC9zZXJ2ZXItcG9zdGdyZXMgcG9zdGdyZXNxbDovL2xvY2FsaG9zdC9teWRiIn0%3D)
+[install](cursor:extension/artemnovichkov.asset-catalog-viewer)
+
+
+A VS Code and Cursor extension that provides an Xcode-like interface for previewing and inspecting `.xcassets` (Asset Catalog) directories. View your iOS, macOS, and other Apple platform assets with the same visual experience you get in Xcode.
 
 ![](.github/screenshot.png)
 
@@ -35,9 +40,9 @@ A VS Code extension that provides an Xcode-like interface for previewing and ins
 
 ## Installation
 
-### From VS Code Marketplace
+### From Marketplace
 
-1. Open VS Code
+1. Open VS Code or Cursor
 2. Go to Extensions (⌘⇧X / Ctrl+Shift+X)
 3. Search for "Asset Catalog Viewer"
 4. Click Install
@@ -54,7 +59,7 @@ A VS Code extension that provides an Xcode-like interface for previewing and ins
 ### Opening an Asset Catalog
 
 1. **From Explorer**:
-   - Right-click any `.xcassets` directory in the VS Code Explorer
+   - Right-click any `.xcassets` directory in Explorer
    - Select "Open Asset Catalog Viewer" from the context menu
 
 2. **From Command Palette**:
