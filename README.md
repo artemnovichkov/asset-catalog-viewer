@@ -3,9 +3,6 @@
 [![VS Marketplace](https://img.shields.io/visual-studio-marketplace/v/artemnovichkov.asset-catalog-viewer?style=for-the-badge&logo=visual-studio-code&label=VS%20Code)](https://marketplace.visualstudio.com/items?itemName=artemnovichkov.asset-catalog-viewer)
 [![Cursor](https://img.shields.io/badge/Cursor-Install-blue?style=for-the-badge&logo=cursor)](https://open-vsx.org/extension/artemnovichkov/asset-catalog-viewer)
 
-[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en-US/install-mcp?name=postgres&config=eyJjb21tYW5kIjoibnB4IC15IEBtb2RlbGNvbnRleHRwcm90b2NvbC9zZXJ2ZXItcG9zdGdyZXMgcG9zdGdyZXNxbDovL2xvY2FsaG9zdC9teWRiIn0%3D)
-[install](cursor:extension/artemnovichkov.asset-catalog-viewer)
-
 
 A VS Code and Cursor extension that provides an Xcode-like interface for previewing and inspecting `.xcassets` (Asset Catalog) directories. View your iOS, macOS, and other Apple platform assets with the same visual experience you get in Xcode.
 
