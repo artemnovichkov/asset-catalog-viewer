@@ -16,6 +16,7 @@ A VS Code and Cursor extension that provides an Xcode-like interface for preview
 - **Color Sets** - Preview colors with light/dark mode variants, high contrast support, and color space information
 - **App Icon Sets** - Browse app icons organized by size and appearance variants
 - **Data Sets** - View data assets with content preview for text-based files
+- **Lottie Animations** - Preview Lottie JSON animations with playback controls
 
 ### 🖥️ Xcode-Like Interface
 
