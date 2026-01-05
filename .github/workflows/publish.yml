@@ -19,6 +19,7 @@ jobs:
       - run: npm run vscode:prepublish
       - run: npx vsce package -o asset-catalog-viewer.vsix
       - run: npx vsce publish -p ${{ secrets.VSCE_PAT }}
+      - run: npx ovsx publish asset-catalog-viewer.vsix -p ${{ secrets.OVSX_PAT }}
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
