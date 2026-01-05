@@ -87,6 +87,7 @@ export interface ConvertedDataItem {
   content?: string;
   uri: string;
   fsPath: string;
+  isLottie?: boolean;
 }
 
 export interface ConvertedAppIconVariant {
@@ -151,6 +152,7 @@ export interface DataItem {
   idiom: string;
   path?: string;
   content?: string;
+  isLottie?: boolean;
 }
 
 export interface AppIconSet {

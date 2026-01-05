@@ -304,6 +304,10 @@ export class AssetParser {
           try {
             const content = await fs.promises.readFile(filePath, 'utf8');
             dataItem.content = content;
+            // Detect Lottie animation
+            if (item.filename.toLowerCase().endsWith('.json')) {
+              dataItem.isLottie = this.isLottieAnimation(content);
+            }
           } catch (e) {
             // If reading as text fails, it might be binary
             dataItem.content = undefined;
@@ -318,5 +322,21 @@ export class AssetParser {
       name: path.basename(dataSetPath, '.dataset'),
       data: dataItems,
     };
+  }
+
+  private isLottieAnimation(content: string): boolean {
+    try {
+      const json = JSON.parse(content);
+      // Lottie files have these required properties
+      return (
+        typeof json.v === 'string' &&
+        typeof json.fr === 'number' &&
+        typeof json.w === 'number' &&
+        typeof json.h === 'number' &&
+        Array.isArray(json.layers)
+      );
+    } catch {
+      return false;
+    }
   }
 }

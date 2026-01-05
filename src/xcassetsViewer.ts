@@ -5,7 +5,8 @@ import { AssetParser } from './parsers/assetParser';
 import {
   AssetCatalog,
   AssetItem,
-  ConvertedAssetItem
+  ConvertedAssetItem,
+  ConvertedDataItem
 } from './types';
 
 export class XCAssetsViewer {
@@ -90,11 +91,18 @@ export class XCAssetsViewer {
             type: 'data' as const,
             name: item.dataSet.name,
             path: item.path || '',
-            data: item.dataSet.data.map(d => ({
-              ...d,
-              uri: d.path ? webview.asWebviewUri(vscode.Uri.file(d.path)).toString() : '',
-              fsPath: d.path || ''
-            }))
+            data: item.dataSet.data.map(d => {
+              const converted: ConvertedDataItem = {
+                filename: d.filename,
+                idiom: d.idiom,
+                path: d.path,
+                content: d.content,
+                uri: d.path ? webview.asWebviewUri(vscode.Uri.file(d.path)).toString() : '',
+                fsPath: d.path || '',
+                isLottie: d.isLottie
+              };
+              return converted;
+            })
           };
         } else if (item.type === 'appiconset' && item.appIconSet) {
           return {
