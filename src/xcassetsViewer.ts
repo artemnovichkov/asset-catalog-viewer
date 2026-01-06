@@ -16,6 +16,7 @@ export class XCAssetsViewer {
     const xcassetsPath = uri.fsPath;
     const catalogName = path.basename(xcassetsPath);
 
+    const webviewPath = vscode.Uri.file(path.join(this.context.extensionPath, 'src', 'webview'));
     const panel = vscode.window.createWebviewPanel(
       'xcassetsViewer',
       catalogName,
@@ -23,7 +24,7 @@ export class XCAssetsViewer {
       {
         enableScripts: true,
         retainContextWhenHidden: true,
-        localResourceRoots: [uri]
+        localResourceRoots: [uri, webviewPath]
       }
     );
 
@@ -126,11 +127,18 @@ export class XCAssetsViewer {
 
     const assetsJson = JSON.stringify(assetsData);
 
+    // Get URIs for external resources
+    const webviewDir = path.join(this.context.extensionPath, 'src', 'webview');
+    const stylesUri = webview.asWebviewUri(vscode.Uri.file(path.join(webviewDir, 'styles.css')));
+    const mainJsUri = webview.asWebviewUri(vscode.Uri.file(path.join(webviewDir, 'main.js')));
+
     // Read template file
-    const templatePath = path.join(this.context.extensionPath, 'src', 'webview', 'template.html');
+    const templatePath = path.join(webviewDir, 'template.html');
     let template = fs.readFileSync(templatePath, 'utf8');
 
     // Replace placeholders
+    template = template.replace('{{STYLES_URI}}', stylesUri.toString());
+    template = template.replace('{{MAIN_JS_URI}}', mainJsUri.toString());
     template = template.replace('{{TITLE}}', catalog.name);
     template = template.replace('{{ASSETS_DATA}}', assetsJson);
 
