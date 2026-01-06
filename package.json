@@ -2,7 +2,7 @@
   "name": "asset-catalog-viewer",
   "displayName": "Asset Catalog Viewer",
   "description": "View .xcassets content like in Xcode",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "publisher": "artemnovichkov",
   "author": {
     "name": "Artem Novichkov",
@@ -68,7 +68,8 @@
     ]
   },
   "scripts": {
-    "vscode:prepublish": "npm run compile",
+    "vscode:prepublish": "npm run compile:prod",
+    "compile:prod": "tsc -p ./ && node esbuild.webview.mjs --minify",
     "compile": "tsc -p ./ && npm run compile:webview",
     "compile:webview": "node esbuild.webview.mjs",
     "watch": "tsc -watch -p ./",

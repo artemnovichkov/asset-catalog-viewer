@@ -11,9 +11,9 @@ node_modules/**
 tsconfig.json
 .eslintrc.json
 esbuild.webview.mjs
-**/*.map
 **/*.ts
 !out/**
+out/**/*.map
 AssetExample/**
 *.md
 !README.md
