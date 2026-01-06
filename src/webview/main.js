@@ -39,13 +39,15 @@ function hideLoading() {
   }
 }
 
-// Flatten items into assets array (excluding folders)
+// Flatten items into assets array (including folders)
 // Add unique ID to each asset for reliable indexing
 function flattenItems(items, parentPath = '') {
   const assets = [];
   items.forEach(item => {
     if (item.type === 'folder') {
       const folderPath = parentPath ? `${parentPath}/${item.name}` : item.name;
+      // Add folder itself
+      assets.push({ ...item, _path: folderPath });
       assets.push(...flattenItems(item.children || [], folderPath));
     } else {
       const itemPath = parentPath ? `${parentPath}/${item.name}` : item.name;
@@ -207,12 +209,15 @@ async function renderAssetList() {
     items.forEach((item, itemIdx) => {
       const itemPath = parentPath ? `${parentPath}/${item.name}` : item.name;
       const indent = depth * 16;
+      
+      // Find index in flattened allAssets array using path
+      const assetIndex = allAssets.findIndex(a => a._path === itemPath);
 
       if (item.type === 'folder') {
         const isExpanded = expandedFolders.has(itemPath);
         const chevronClass = isExpanded ? 'expanded' : '';
         html += `
-          <div class="asset-list-item folder" data-folder-path="${itemPath}" data-path="${item.path || ''}" style="padding-left: ${indent + 8}px;">
+          <div class="asset-list-item folder" data-index="${assetIndex}" data-folder-path="${itemPath}" data-path="${item.path || ''}" style="padding-left: ${indent + 8}px;">
             <i class="codicon codicon-chevron-right folder-chevron ${chevronClass}"></i>
             <i class="codicon codicon-folder asset-icon"></i>
             <span>${escapeHtml(item.name)}</span>
@@ -224,9 +229,6 @@ async function renderAssetList() {
           html += `</div>`;
         }
       } else {
-        // Find index in flattened allAssets array using path
-        const assetIndex = allAssets.findIndex(a => a._path === itemPath);
-
         let iconHtml = '';
         if (item.type === 'image' && item.images.length > 0) {
           const firstImage = item.images.find(img => img.filename);
@@ -304,10 +306,20 @@ async function renderAssetList() {
 
   // Add click handlers for folders
   listEl.querySelectorAll('.asset-list-item.folder').forEach(item => {
+    // Chevron click -> Toggle
+    const chevron = item.querySelector('.folder-chevron');
+    if (chevron) {
+      chevron.addEventListener('click', (e) => {
+        const folderPath = item.dataset.folderPath;
+        toggleFolder(folderPath);
+        e.stopPropagation();
+      });
+    }
+
+    // Row click -> Select
     item.addEventListener('click', (e) => {
-      const folderPath = item.dataset.folderPath;
-      toggleFolder(folderPath);
-      e.stopPropagation();
+      const idx = parseInt(item.dataset.index);
+      selectAsset(idx);
     });
   });
 
@@ -350,7 +362,11 @@ function selectAsset(index) {
   });
 
   const asset = allAssets[index];
-  renderPreview(asset);
+  if (asset.type === 'folder') {
+    document.getElementById('previewPanel').innerHTML = '<div class="empty-state">Folder</div>';
+  } else {
+    renderPreview(asset);
+  }
   renderProperties(asset);
 }
 
@@ -1469,6 +1485,31 @@ function renderProperties(asset) {
         vscode.postMessage({ command: 'showInFinder', filePath: path });
       }
     });
+  } else if (asset.type === 'folder') {
+    panel.innerHTML = `
+      <div class="property-section">
+        <div class="property-title">Name</div>
+        <div class="property-value-with-button">
+          <div class="property-value" style="flex: 1; margin-bottom: 0;">${escapeHtml(asset.name)}</div>
+          <button class="finder-button" data-path="${asset.path}">
+            <i class="codicon codicon-folder-opened"></i>
+          </button>
+        </div>
+      </div>
+      <div class="property-section">
+        <div class="property-title">Type</div>
+        <div class="property-value">Folder</div>
+      </div>
+    `;
+
+    // Add click handler for finder button
+    panel.querySelector('.finder-button').addEventListener('click', (e) => {
+      const button = e.currentTarget;
+      const path = button.dataset.path;
+      if (path) {
+        vscode.postMessage({ command: 'showInFinder', filePath: path });
+      }
+    });
   }
 }
 
@@ -1744,64 +1785,85 @@ const vscode = acquireVsCodeApi();
     // Only handle arrow keys and Enter when not in input field
     if (e.target.tagName === 'INPUT') return;
 
-    if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter') {
+    const keys = ['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'Enter'];
+    if (keys.includes(e.key)) {
       e.preventDefault();
 
-      // Get all visible asset items (not folders)
-      const assetItems = Array.from(document.querySelectorAll('.asset-list-item:not(.folder)'));
-      if (assetItems.length === 0) return;
+      // Get all visible items (folders and assets)
+      const visibleItems = Array.from(document.querySelectorAll('.asset-list-item'));
+      if (visibleItems.length === 0) return;
 
       const currentIndex = currentSelectedAssetIndex;
+      const currentElement = visibleItems.find(item => parseInt(item.dataset.index) === currentIndex);
+      const currentVisibleIndex = visibleItems.indexOf(currentElement);
 
       if (e.key === 'ArrowDown') {
-        // Find next asset in visible list
-        const currentVisibleIndex = assetItems.findIndex(item => {
-          const idx = parseInt(item.dataset.index || '-1');
-          return idx === currentIndex;
-        });
-
-        if (currentVisibleIndex < assetItems.length - 1) {
-          const nextItem = assetItems[currentVisibleIndex + 1];
-          const nextIndex = parseInt(nextItem.dataset.index || '-1');
-          if (nextIndex >= 0) {
-            selectAsset(nextIndex);
-            nextItem.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-          }
-        } else if (currentVisibleIndex === -1 && assetItems.length > 0) {
+        if (currentVisibleIndex < visibleItems.length - 1) {
+          const nextItem = visibleItems[currentVisibleIndex + 1];
+          const nextIndex = parseInt(nextItem.dataset.index);
+          selectAsset(nextIndex);
+          nextItem.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        } else if (currentVisibleIndex === -1 && visibleItems.length > 0) {
           // No selection, select first
-          const firstItem = assetItems[0];
-          const firstIndex = parseInt(firstItem.dataset.index || '-1');
-          if (firstIndex >= 0) {
-            selectAsset(firstIndex);
-            firstItem.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-          }
+          const firstItem = visibleItems[0];
+          const firstIndex = parseInt(firstItem.dataset.index);
+          selectAsset(firstIndex);
+          firstItem.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
         }
       } else if (e.key === 'ArrowUp') {
-        // Find previous asset in visible list
-        const currentVisibleIndex = assetItems.findIndex(item => {
-          const idx = parseInt(item.dataset.index || '-1');
-          return idx === currentIndex;
-        });
-
         if (currentVisibleIndex > 0) {
-          const prevItem = assetItems[currentVisibleIndex - 1];
-          const prevIndex = parseInt(prevItem.dataset.index || '-1');
-          if (prevIndex >= 0) {
-            selectAsset(prevIndex);
-            prevItem.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-          }
-        } else if (currentVisibleIndex === -1 && assetItems.length > 0) {
+          const prevItem = visibleItems[currentVisibleIndex - 1];
+          const prevIndex = parseInt(prevItem.dataset.index);
+          selectAsset(prevIndex);
+          prevItem.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        } else if (currentVisibleIndex === -1 && visibleItems.length > 0) {
           // No selection, select last
-          const lastItem = assetItems[assetItems.length - 1];
-          const lastIndex = parseInt(lastItem.dataset.index || '-1');
-          if (lastIndex >= 0) {
-            selectAsset(lastIndex);
-            lastItem.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+          const lastItem = visibleItems[visibleItems.length - 1];
+          const lastIndex = parseInt(lastItem.dataset.index);
+          selectAsset(lastIndex);
+          lastItem.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
+      } else if (e.key === 'ArrowRight') {
+        if (currentElement && currentElement.classList.contains('folder')) {
+          const folderPath = currentElement.dataset.folderPath;
+          if (!expandedFolders.has(folderPath)) {
+            // Collapsed -> Expand
+            toggleFolder(folderPath);
+          } else {
+            // Expanded -> Select first child (next visible item)
+            if (currentVisibleIndex < visibleItems.length - 1) {
+              const nextItem = visibleItems[currentVisibleIndex + 1];
+              const nextIndex = parseInt(nextItem.dataset.index);
+              selectAsset(nextIndex);
+              nextItem.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            }
+          }
+        }
+      } else if (e.key === 'ArrowLeft') {
+        if (currentElement) {
+          if (currentElement.classList.contains('folder') && expandedFolders.has(currentElement.dataset.folderPath)) {
+            // Expanded -> Collapse
+            toggleFolder(currentElement.dataset.folderPath);
+          } else {
+            // Go to parent
+            // Check if we are inside a folder-children container
+            // The structure is: div.asset-list-item (sibling) div.folder-children (containing us)
+            // Actually, folder-children is a sibling of the parent folder item.
+            // But we are inside folder-children.
+            const parentContainer = currentElement.parentElement;
+            if (parentContainer && parentContainer.classList.contains('folder-children')) {
+              const parentPath = parentContainer.dataset.parentPath;
+              const parentIndex = allAssets.findIndex(a => a._path === parentPath);
+              if (parentIndex >= 0) {
+                selectAsset(parentIndex);
+                const parentElement = document.querySelector(`.asset-list-item[data-index="${parentIndex}"]`);
+                if (parentElement) parentElement.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+              }
+            }
           }
         }
       } else if (e.key === 'Enter') {
-        // Enter doesn't do anything special for now (asset is already selected)
-        // Could be extended to trigger some action
+        // Enter doesn't do anything special for now
       }
     }
   });
