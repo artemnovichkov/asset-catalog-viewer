@@ -7,6 +7,7 @@
         <link rel="stylesheet" href="https://unpkg.com/@vscode/codicons@latest/dist/codicon.css">
         <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
+        <script src="https://unpkg.com/@dotlottie/player-component@2.7.12/dist/dotlottie-player.mjs" type="module"></script>
         <style>
           * {
             margin: 0;
@@ -1252,7 +1253,7 @@
               const dataItem = asset.data.length > 0 ? asset.data[0] : null;
 
               if (dataItem && dataItem.isLottie && dataItem.content) {
-                // Render Lottie player
+                // Render JSON Lottie player (with custom controls)
                 panel.innerHTML = `
                   <div class="preview-container">
                     <div class="preview-title">${escapeHtml(asset.name)}</div>
@@ -1286,6 +1287,47 @@
 
                 // Initialize Lottie player
                 initLottiePlayer(dataItem.content);
+              } else if (dataItem && dataItem.isLottie && dataItem.uri) {
+                // Render .lottie file player (binary format) with custom controls
+                panel.innerHTML = `
+                  <div class="preview-container">
+                    <div class="preview-title">${escapeHtml(asset.name)}</div>
+                    <div class="preview-content" style="width: 100%; justify-content: center;">
+                      <div class="lottie-player-container">
+                        <dotlottie-player
+                          id="dotLottiePlayer"
+                          src="${dataItem.uri}"
+                          autoplay
+                          loop
+                          class="lottie-animation">
+                        </dotlottie-player>
+                        <div class="lottie-controls">
+                          <button class="lottie-btn" id="lottiePlayBtn" title="Play/Pause">
+                            <i class="codicon codicon-debug-pause"></i>
+                          </button>
+                          <div class="lottie-progress-group">
+                            <span class="lottie-time" id="lottieCurrentTime">0:00</span>
+                            <input type="range" class="lottie-progress" id="lottieProgress" min="0" max="100" value="0" />
+                            <span class="lottie-time" id="lottieDuration">0:00</span>
+                          </div>
+                          <select class="lottie-speed-select" id="lottieSpeed" title="Playback Speed">
+                            <option value="0.5">0.5x</option>
+                            <option value="1" selected>1x</option>
+                            <option value="1.5">1.5x</option>
+                            <option value="2">2x</option>
+                            <option value="2.5">2.5x</option>
+                          </select>
+                          <button class="lottie-btn active" id="lottieLoopBtn" title="Loop">
+                            <i class="codicon codicon-sync"></i>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                `;
+
+                // Initialize dotlottie player controls
+                initDotLottiePlayer();
               } else {
                 // Show file content if available
                 let contentHtml = '';
@@ -2016,15 +2058,17 @@
 
             durationEl.textContent = formatTime(durationSec);
 
-            // Update progress on each frame
-            anim.addEventListener('enterFrame', () => {
-              const currentFrame = anim.currentFrame;
-              const progress = (currentFrame / totalFrames) * 100;
-              progressSlider.value = progress;
+            // Update progress on each frame (skip for single-frame animations)
+            if (totalFrames > 1) {
+              anim.addEventListener('enterFrame', () => {
+                const currentFrame = anim.currentFrame;
+                const progress = (currentFrame / totalFrames) * 100;
+                progressSlider.value = progress;
 
-              const currentSec = currentFrame / frameRate;
-              currentTimeEl.textContent = formatTime(currentSec);
-            });
+                const currentSec = currentFrame / frameRate;
+                currentTimeEl.textContent = formatTime(currentSec);
+              });
+            }
 
             // Play/Pause button
             let isPlaying = true;
@@ -2062,6 +2106,94 @@
               anim.loop = isLooping;
               loopBtn.classList.toggle('active', isLooping);
               // Update icon based on loop state
+              const icon = loopBtn.querySelector('i');
+              if (isLooping) {
+                icon.className = 'codicon codicon-sync';
+              } else {
+                icon.className = 'codicon codicon-sync-ignored';
+              }
+            });
+          }
+
+          // Initialize DotLottie player (.lottie files)
+          function initDotLottiePlayer() {
+            const player = document.getElementById('dotLottiePlayer');
+            const playBtn = document.getElementById('lottiePlayBtn');
+            const progressSlider = document.getElementById('lottieProgress');
+            const currentTimeEl = document.getElementById('lottieCurrentTime');
+            const durationEl = document.getElementById('lottieDuration');
+            const speedSelect = document.getElementById('lottieSpeed');
+            const loopBtn = document.getElementById('lottieLoopBtn');
+
+            if (!player) return;
+
+            // Format time as M:SS
+            function formatTime(seconds) {
+              const mins = Math.floor(seconds / 60);
+              const secs = Math.floor(seconds % 60);
+              return `${mins}:${secs.toString().padStart(2, '0')}`;
+            }
+
+            let isPlaying = true;
+            let isLooping = true;
+            let totalFrames = 0;
+            let frameRate = 30;
+
+            // Wait for player to be ready
+            player.addEventListener('ready', () => {
+              const lottie = player.getLottie();
+              if (lottie) {
+                totalFrames = lottie.totalFrames;
+                frameRate = lottie.frameRate || 30;
+                const durationSec = totalFrames / frameRate;
+                durationEl.textContent = formatTime(durationSec);
+              }
+            });
+
+            // Update progress on each frame (skip for single-frame animations)
+            player.addEventListener('frame', (e) => {
+              const currentFrame = e.detail.frame;
+              if (totalFrames > 1) {
+                const progress = (currentFrame / totalFrames) * 100;
+                progressSlider.value = progress;
+                const currentSec = currentFrame / frameRate;
+                currentTimeEl.textContent = formatTime(currentSec);
+              }
+            });
+
+            // Play/Pause button
+            playBtn.addEventListener('click', () => {
+              if (isPlaying) {
+                player.pause();
+                playBtn.innerHTML = '<i class="codicon codicon-play"></i>';
+              } else {
+                player.play();
+                playBtn.innerHTML = '<i class="codicon codicon-debug-pause"></i>';
+              }
+              isPlaying = !isPlaying;
+            });
+
+            // Progress slider seek
+            progressSlider.addEventListener('input', (e) => {
+              const progress = parseFloat(e.target.value);
+              const frame = (progress / 100) * totalFrames;
+              player.seek(frame);
+              if (!isPlaying) {
+                player.pause();
+              }
+            });
+
+            // Speed selector
+            speedSelect.addEventListener('change', (e) => {
+              const speed = parseFloat(e.target.value);
+              player.setSpeed(speed);
+            });
+
+            // Loop toggle
+            loopBtn.addEventListener('click', () => {
+              isLooping = !isLooping;
+              player.setLooping(isLooping);
+              loopBtn.classList.toggle('active', isLooping);
               const icon = loopBtn.querySelector('i');
               if (isLooping) {
                 icon.className = 'codicon codicon-sync';

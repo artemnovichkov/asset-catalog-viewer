@@ -300,17 +300,30 @@ export class AssetParser {
         const filePath = path.join(dataSetPath, item.filename);
         if (fs.existsSync(filePath)) {
           dataItem.path = filePath;
-          // Read file content for text-based files
-          try {
-            const content = await fs.promises.readFile(filePath, 'utf8');
-            dataItem.content = content;
-            // Detect Lottie animation
-            if (item.filename.toLowerCase().endsWith('.json')) {
-              dataItem.isLottie = this.isLottieAnimation(content);
+          const lowerFilename = item.filename.toLowerCase();
+
+          // Only read content for text-based files
+          const textExtensions = ['.json', '.txt', '.xml', '.plist', '.strings'];
+          const isTextFile = textExtensions.some(ext => lowerFilename.endsWith(ext));
+
+          // .lottie files are binary (ZIP archives), not text
+          const isDotLottie = lowerFilename.endsWith('.lottie');
+          if (isDotLottie) {
+            dataItem.isLottie = true;
+          }
+
+          if (isTextFile) {
+            try {
+              const content = await fs.promises.readFile(filePath, 'utf8');
+              dataItem.content = content;
+              // Detect Lottie JSON animation
+              if (lowerFilename.endsWith('.json')) {
+                dataItem.isLottie = this.isLottieAnimation(content);
+              }
+            } catch (e) {
+              // If reading as text fails, it might be binary
+              dataItem.content = undefined;
             }
-          } catch (e) {
-            // If reading as text fails, it might be binary
-            dataItem.content = undefined;
           }
         }
       }
