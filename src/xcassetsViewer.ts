@@ -30,7 +30,7 @@ export class XCAssetsViewer {
 
     const parser = new AssetParser();
     const assets = await parser.parse(xcassetsPath);
-    panel.webview.html = this.getHtmlForWebview(panel.webview, assets, xcassetsPath);
+    panel.webview.html = await this.getHtmlForWebview(panel.webview, assets, xcassetsPath);
 
     panel.webview.onDidReceiveMessage(message => {
       const { spawn } = require('child_process');
@@ -54,11 +54,11 @@ export class XCAssetsViewer {
     });
   }
 
-  private getHtmlForWebview(
+  private async getHtmlForWebview(
     webview: vscode.Webview,
     catalog: AssetCatalog,
     xcassetsPath: string
-  ): string {
+  ): Promise<string> {
     // Convert items to webview format with URIs
     const convertItems = (items: AssetItem[]): ConvertedAssetItem[] => {
       return items.map(item => {
@@ -136,7 +136,7 @@ export class XCAssetsViewer {
 
     // Read template file
     const templatePath = path.join(webviewDir, 'template.html');
-    let template = fs.readFileSync(templatePath, 'utf8');
+    let template = await fs.promises.readFile(templatePath, 'utf8');
 
     // Replace placeholders
     template = template.replace('{{STYLES_URI}}', stylesUri.toString());

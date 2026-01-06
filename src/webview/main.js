@@ -21,6 +21,8 @@ let allAssets = [];
 let currentSelectedAssetIndex = -1;
 let expandedFolders = new Set();
 let filterText = '';
+let imageObserver = null;
+let pdfObserver = null;
 
 // Loading state management
 function showLoading() {
@@ -233,7 +235,7 @@ async function renderAssetList() {
             if (isPdf) {
               iconHtml = `<div class="asset-thumbnail-container"><canvas class="asset-thumbnail-canvas" data-pdf-url="${firstImage.uri}" data-idx="${assetIndex}"></canvas></div>`;
             } else {
-              iconHtml = `<img src="${firstImage.uri}" class="asset-thumbnail" alt="${item.name}" />`;
+              iconHtml = `<img data-src="${firstImage.uri}" class="asset-thumbnail lazy-img" alt="${item.name}" />`;
             }
           } else {
             iconHtml = `<i class="codicon codicon-file-media asset-icon"></i>`;
@@ -249,7 +251,7 @@ async function renderAssetList() {
         } else if (item.type === 'appicon') {
           const firstIcon = item.icons.find(icon => icon.filename);
           if (firstIcon) {
-            iconHtml = `<img src="${firstIcon.uri}" class="asset-thumbnail" alt="${item.name}" />`;
+            iconHtml = `<img data-src="${firstIcon.uri}" class="asset-thumbnail lazy-img" alt="${item.name}" />`;
           } else {
             iconHtml = `<div class="asset-thumbnail-placeholder"></div>`;
           }
@@ -268,12 +270,37 @@ async function renderAssetList() {
 
   listEl.innerHTML = renderItems(filteredItems);
 
-  // Render PDF thumbnails
+  // Disconnect previous observers
+  if (imageObserver) imageObserver.disconnect();
+  if (pdfObserver) pdfObserver.disconnect();
+
+  // Lazy load images with IntersectionObserver
+  const lazyImages = listEl.querySelectorAll('img.lazy-img');
+  imageObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const img = entry.target;
+        img.src = img.dataset.src;
+        img.classList.remove('lazy-img');
+        imageObserver.unobserve(img);
+      }
+    });
+  }, { rootMargin: '50px' });
+  lazyImages.forEach(img => imageObserver.observe(img));
+
+  // Lazy render PDF thumbnails with IntersectionObserver
   const pdfCanvases = listEl.querySelectorAll('canvas[data-pdf-url]');
-  for (const canvas of pdfCanvases) {
-    const pdfUrl = canvas.dataset.pdfUrl;
-    await renderPdfToCanvas(pdfUrl, canvas, 1, 24, 24);
-  }
+  pdfObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const canvas = entry.target;
+        const pdfUrl = canvas.dataset.pdfUrl;
+        renderPdfToCanvas(pdfUrl, canvas, 1, 24, 24);
+        pdfObserver.unobserve(canvas);
+      }
+    });
+  }, { rootMargin: '50px' });
+  pdfCanvases.forEach(canvas => pdfObserver.observe(canvas));
 
   // Add click handlers for folders
   listEl.querySelectorAll('.asset-list-item.folder').forEach(item => {

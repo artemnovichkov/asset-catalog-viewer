@@ -36,7 +36,6 @@ export class AssetParser {
     }
 
     const root = rootPath || dirPath;
-    const items: AssetItem[] = [];
 
     let entries;
     try {
@@ -48,95 +47,67 @@ export class AssetParser {
       return [];
     }
 
-    for (const entry of entries) {
-      if (!entry.isDirectory()) {
-        continue;
-      }
-
-      // Skip hidden/system files
-      if (entry.name.startsWith('.')) {
-        continue;
-      }
-
+    // Filter valid entries first
+    const validEntries = entries.filter(entry => {
+      if (!entry.isDirectory()) return false;
+      if (entry.name.startsWith('.')) return false;
       const entryPath = path.join(dirPath, entry.name);
       const resolved = path.resolve(entryPath);
-
-      // Prevent path traversal via symlinks
       if (!resolved.startsWith(path.resolve(root))) {
         console.warn(`Skipping path outside catalog: ${resolved}`);
-        continue;
+        return false;
       }
+      return true;
+    });
+
+    // Parse all entries in parallel
+    const parsePromises = validEntries.map(async (entry): Promise<AssetItem | null> => {
+      const entryPath = path.join(dirPath, entry.name);
 
       if (entry.name.endsWith('.imageset')) {
         const imageSet = await this.parseImageSet(entryPath);
         if (!imageSet) {
           console.warn(`Failed to parse imageset: ${entryPath}`);
-        } else {
-          items.push({
-            type: 'imageset',
-            name: imageSet.name,
-            path: entryPath,
-            imageSet,
-          });
+          return null;
         }
+        return { type: 'imageset', name: imageSet.name, path: entryPath, imageSet };
       } else if (entry.name.endsWith('.appiconset')) {
         const appIconSet = await this.parseAppIconSet(entryPath);
         if (!appIconSet) {
           console.warn(`Failed to parse appiconset: ${entryPath}`);
-        } else {
-          items.push({
-            type: 'appiconset',
-            name: appIconSet.name,
-            path: entryPath,
-            appIconSet,
-          });
+          return null;
         }
+        return { type: 'appiconset', name: appIconSet.name, path: entryPath, appIconSet };
       } else if (entry.name.endsWith('.colorset')) {
         const colorSet = await this.parseColorSet(entryPath);
         if (!colorSet) {
           console.warn(`Failed to parse colorset: ${entryPath}`);
-        } else {
-          items.push({
-            type: 'colorset',
-            name: colorSet.name,
-            path: entryPath,
-            colorSet,
-          });
+          return null;
         }
+        return { type: 'colorset', name: colorSet.name, path: entryPath, colorSet };
       } else if (entry.name.endsWith('.dataset')) {
         const dataSet = await this.parseDataSet(entryPath);
         if (!dataSet) {
           console.warn(`Failed to parse dataset: ${entryPath}`);
-        } else {
-          items.push({
-            type: 'dataset',
-            name: dataSet.name,
-            path: entryPath,
-            dataSet,
-          });
+          return null;
         }
+        return { type: 'dataset', name: dataSet.name, path: entryPath, dataSet };
       } else {
         // Regular folder - recurse into it
         const children = await this.parseDirectory(entryPath, depth + 1, root);
         if (children.length > 0) {
-          items.push({
-            type: 'folder',
-            name: entry.name,
-            path: entryPath,
-            children,
-          });
+          return { type: 'folder', name: entry.name, path: entryPath, children };
         }
+        return null;
       }
-    }
+    });
 
-    return items;
+    const results = await Promise.all(parsePromises);
+    return results.filter((item): item is AssetItem => item !== null);
   }
 
   private async parseImageSet(imageSetPath: string): Promise<ImageSet | null> {
     const contentsPath = path.join(imageSetPath, 'Contents.json');
-    if (!fs.existsSync(contentsPath)) {
-      return null;
-    }
 
     let contents: ImageContents;
     try {
@@ -163,11 +134,6 @@ export class AssetParser {
         ? path.join(imageSetPath, image.filename)
         : undefined;
 
-      // Validate file exists
-      if (imagePath && !fs.existsSync(imagePath)) {
-        console.warn(`Referenced image missing: ${imagePath}`);
-      }
-
       images.push({
         filename: image.filename || '',
         scale: image.scale,
@@ -185,9 +151,6 @@ export class AssetParser {
 
   private async parseAppIconSet(appIconSetPath: string): Promise<AppIconSet | null> {
     const contentsPath = path.join(appIconSetPath, 'Contents.json');
-    if (!fs.existsSync(contentsPath)) {
-      return null;
-    }
 
     let contents: AppIconContents;
     try {
@@ -214,11 +177,6 @@ export class AssetParser {
         ? path.join(appIconSetPath, image.filename)
         : undefined;
 
-      // Validate file exists
-      if (imagePath && !fs.existsSync(imagePath)) {
-        console.warn(`Referenced image missing: ${imagePath}`);
-      }
-
       icons.push({
         filename: image.filename || '',
         size: image.size,
@@ -237,9 +195,6 @@ export class AssetParser {
 
   private async parseColorSet(colorSetPath: string): Promise<ColorSet | null> {
     const contentsPath = path.join(colorSetPath, 'Contents.json');
-    if (!fs.existsSync(contentsPath)) {
-      return null;
-    }
 
     let contents: ColorContents;
     try {
@@ -267,9 +222,6 @@ export class AssetParser {
 
   private async parseDataSet(dataSetPath: string): Promise<DataSet | null> {
     const contentsPath = path.join(dataSetPath, 'Contents.json');
-    if (!fs.existsSync(contentsPath)) {
-      return null;
-    }
 
     let contents: DataContents;
     try {
@@ -298,32 +250,30 @@ export class AssetParser {
 
       if (item.filename) {
         const filePath = path.join(dataSetPath, item.filename);
-        if (fs.existsSync(filePath)) {
-          dataItem.path = filePath;
-          const lowerFilename = item.filename.toLowerCase();
+        dataItem.path = filePath;
+        const lowerFilename = item.filename.toLowerCase();
 
-          // Only read content for text-based files
-          const textExtensions = ['.json', '.txt', '.xml', '.plist', '.strings'];
-          const isTextFile = textExtensions.some(ext => lowerFilename.endsWith(ext));
+        // .lottie files are binary (ZIP archives), not text
+        const isDotLottie = lowerFilename.endsWith('.lottie');
+        if (isDotLottie) {
+          dataItem.isLottie = true;
+        }
 
-          // .lottie files are binary (ZIP archives), not text
-          const isDotLottie = lowerFilename.endsWith('.lottie');
-          if (isDotLottie) {
-            dataItem.isLottie = true;
-          }
+        // Only read content for text-based files
+        const textExtensions = ['.json', '.txt', '.xml', '.plist', '.strings'];
+        const isTextFile = textExtensions.some(ext => lowerFilename.endsWith(ext));
 
-          if (isTextFile) {
-            try {
-              const content = await fs.promises.readFile(filePath, 'utf8');
-              dataItem.content = content;
-              // Detect Lottie JSON animation
-              if (lowerFilename.endsWith('.json')) {
-                dataItem.isLottie = this.isLottieAnimation(content);
-              }
-            } catch (e) {
-              // If reading as text fails, it might be binary
-              dataItem.content = undefined;
+        if (isTextFile) {
+          try {
+            const content = await fs.promises.readFile(filePath, 'utf8');
+            dataItem.content = content;
+            // Detect Lottie JSON animation
+            if (lowerFilename.endsWith('.json')) {
+              dataItem.isLottie = this.isLottieAnimation(content);
             }
+          } catch (e) {
+            // File missing or not readable as text
+            dataItem.content = undefined;
           }
         }
       }
