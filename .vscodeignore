@@ -1,7 +1,6 @@
 .vscode/**
 .vscode-test/**
 src/**
-!src/webview/template.html
 .gitignore
 .git/**
 .yarn/**
@@ -11,9 +10,10 @@ src/**
 node_modules/**
 tsconfig.json
 .eslintrc.json
+esbuild.webview.mjs
 **/*.map
 **/*.ts
-!out/**/*.js
+!out/**
 AssetExample/**
 *.md
 !README.md

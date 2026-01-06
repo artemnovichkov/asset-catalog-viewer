@@ -16,7 +16,7 @@ export class XCAssetsViewer {
     const xcassetsPath = uri.fsPath;
     const catalogName = path.basename(xcassetsPath);
 
-    const webviewPath = vscode.Uri.file(path.join(this.context.extensionPath, 'src', 'webview'));
+    const webviewPath = vscode.Uri.file(path.join(this.context.extensionPath, 'out', 'webview'));
     const panel = vscode.window.createWebviewPanel(
       'xcassetsViewer',
       catalogName,
@@ -128,9 +128,11 @@ export class XCAssetsViewer {
     const assetsJson = JSON.stringify(assetsData);
 
     // Get URIs for external resources
-    const webviewDir = path.join(this.context.extensionPath, 'src', 'webview');
+    const webviewDir = path.join(this.context.extensionPath, 'out', 'webview');
     const stylesUri = webview.asWebviewUri(vscode.Uri.file(path.join(webviewDir, 'styles.css')));
     const mainJsUri = webview.asWebviewUri(vscode.Uri.file(path.join(webviewDir, 'main.js')));
+    const codiconsUri = webview.asWebviewUri(vscode.Uri.file(path.join(webviewDir, 'codicon.css')));
+    const pdfWorkerUri = webview.asWebviewUri(vscode.Uri.file(path.join(webviewDir, 'pdf.worker.min.mjs')));
 
     // Read template file
     const templatePath = path.join(webviewDir, 'template.html');
@@ -139,6 +141,8 @@ export class XCAssetsViewer {
     // Replace placeholders
     template = template.replace('{{STYLES_URI}}', stylesUri.toString());
     template = template.replace('{{MAIN_JS_URI}}', mainJsUri.toString());
+    template = template.replace('{{CODICONS_URI}}', codiconsUri.toString());
+    template = template.replace('{{PDF_WORKER_URI}}', pdfWorkerUri.toString());
     template = template.replace('{{TITLE}}', catalog.name);
     template = template.replace('{{ASSETS_DATA}}', assetsJson);
 

@@ -4,11 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{TITLE}}</title>
-  <link rel="stylesheet" href="https://unpkg.com/@vscode/codicons@latest/dist/codicon.css">
+  <link rel="stylesheet" href="{{CODICONS_URI}}">
   <link rel="stylesheet" href="{{STYLES_URI}}">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
-  <script src="https://unpkg.com/@dotlottie/player-component@2.7.12/dist/dotlottie-player.mjs" type="module"></script>
 </head>
 <body>
   <div class="left-panel">
@@ -39,7 +36,10 @@
     </div>
   </div>
 
-  <script>window.assetsData = {{ASSETS_DATA}};</script>
+  <script>
+    window.assetsData = {{ASSETS_DATA}};
+    window.pdfWorkerSrc = '{{PDF_WORKER_URI}}';
+  </script>
   <script src="{{MAIN_JS_URI}}"></script>
 </body>
 </html>

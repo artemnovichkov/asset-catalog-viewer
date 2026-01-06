@@ -1,5 +1,10 @@
-// Configure PDF.js
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+// Import dependencies
+import * as pdfjsLib from 'pdfjs-dist';
+import lottie from 'lottie-web';
+import '@dotlottie/player-component';
+
+// Configure PDF.js worker (will be set by extension via global)
+pdfjsLib.GlobalWorkerOptions.workerSrc = window.pdfWorkerSrc || '';
 
 // HTML escaping function for security
 function escapeHtml(unsafe) {
