@@ -17,5 +17,6 @@ out/**/*.map
 AssetExample/**
 *.md
 !README.md
+!CHANGELOG.md
 .claude/**
 .github/**
