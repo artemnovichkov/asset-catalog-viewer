@@ -105,6 +105,29 @@ export class XCAssetsViewer {
         return;
       }
 
+      if (message.command === 'delete') {
+        const { filePath } = message;
+
+        // Validate path is within xcassetsPath
+        const resolvedPath = path.resolve(filePath);
+        const catalogResolved = path.resolve(xcassetsPath);
+        if (!resolvedPath.startsWith(catalogResolved)) {
+          vscode.window.showErrorMessage('Invalid path');
+          return;
+        }
+
+        try {
+          await fs.promises.rm(resolvedPath, { recursive: true });
+
+          // Re-parse and refresh webview
+          const assets = await parser.parse(xcassetsPath);
+          panel.webview.html = await this.getHtmlForWebview(panel.webview, assets, xcassetsPath);
+        } catch (err: any) {
+          vscode.window.showErrorMessage(`Delete failed: ${err.message}`);
+        }
+        return;
+      }
+
       // Validate path
       if (!message.filePath) {
         return;
@@ -127,7 +150,7 @@ export class XCAssetsViewer {
   private async getHtmlForWebview(
     webview: vscode.Webview,
     catalog: AssetCatalog,
-    xcassetsPath: string
+    _xcassetsPath: string
   ): Promise<string> {
     // Convert items to webview format with URIs
     const convertItems = (items: AssetItem[]): ConvertedAssetItem[] => {

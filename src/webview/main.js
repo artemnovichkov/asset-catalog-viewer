@@ -1877,6 +1877,27 @@ const vscode = acquireVsCodeApi();
     }
   });
 
+  // Delete selected asset with Delete/Backspace key
+  document.addEventListener('keydown', (e) => {
+    if ((e.key === 'Delete' || e.key === 'Backspace') && !e.repeat) {
+      // Skip if in input field or renaming
+      if (e.target.tagName === 'INPUT' || isRenaming) return;
+
+      if (currentSelectedAssetIndex >= 0) {
+        e.preventDefault();
+        const asset = allAssets[currentSelectedAssetIndex];
+        if (asset && asset.path) {
+          vscode.postMessage({
+            command: 'delete',
+            filePath: asset.path,
+            assetName: asset.name,
+            assetType: asset.type
+          });
+        }
+      }
+    }
+  });
+
   // Keyboard navigation for asset list
   document.addEventListener('keydown', (e) => {
     // Only handle arrow keys and Enter when not in input field
