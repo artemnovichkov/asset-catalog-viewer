@@ -269,69 +269,115 @@ function renderColorPreview(asset, panel, vscode) {
 }
 
 function renderAppIconPreview(asset, panel, vscode) {
-  const sizeGroups = {};
+  const platformGroups = {};
 
   asset.icons.forEach(icon => {
-    const sizeKey = icon.size || 'unknown';
-    if (!sizeGroups[sizeKey]) {
-      sizeGroups[sizeKey] = [];
+    // Group by platform if available, otherwise fallback to idiom
+    const key = icon.platform || icon.idiom || 'other';
+    if (!platformGroups[key]) {
+      platformGroups[key] = [];
     }
-    sizeGroups[sizeKey].push(icon);
+    platformGroups[key].push(icon);
   });
 
-  const iconSlotsHtml = Object.keys(sizeGroups).map(size => {
-    const icons = sizeGroups[size];
-
-    const defaultIcon = icons.find(i => !i.appearances || i.appearances.length === 0);
-    const darkIcon = icons.find(i => i.appearances?.some(a => a.value === 'dark'));
-    const tintedIcon = icons.find(i => i.appearances?.some(a => a.value === 'tinted'));
-
-    const variants = [
-      { icon: defaultIcon, label: 'Any' }
-    ];
-
-    if (darkIcon) {
-      variants.push({ icon: darkIcon, label: 'Dark' });
+  const platformOrder = ['ios', 'macos', 'watchos', 'tvos', 'universal', 'iphone', 'ipad', 'mac', 'watch', 'tv', 'car'];
+  
+  // Add any missing keys to the end
+  Object.keys(platformGroups).forEach(key => {
+    if (!platformOrder.includes(key)) {
+      platformOrder.push(key);
     }
-    if (tintedIcon) {
-      variants.push({ icon: tintedIcon, label: 'Tinted' });
-    }
+  });
 
-    const variantsHtml = variants.map(({ icon, label }) => {
-      if (icon && icon.filename) {
+  const platformLabels = {
+    'ios': 'iOS',
+    'macos': 'macOS',
+    'watchos': 'watchOS',
+    'tvos': 'tvOS',
+    'universal': 'Universal',
+    'iphone': 'iPhone',
+    'ipad': 'iPad',
+    'mac': 'Mac',
+    'watch': 'Apple Watch',
+    'tv': 'Apple TV',
+    'car': 'CarPlay'
+  };
+
+  const contentHtml = platformOrder
+    .filter(key => platformGroups[key])
+    .map(key => {
+      const icons = platformGroups[key];
+      const sizeGroups = {};
+
+      icons.forEach(icon => {
+        const sizeKey = icon.size || 'unknown';
+        if (!sizeGroups[sizeKey]) {
+          sizeGroups[sizeKey] = [];
+        }
+        sizeGroups[sizeKey].push(icon);
+      });
+
+      const iconSlotsHtml = Object.keys(sizeGroups).map(size => {
+        const sizeIcons = sizeGroups[size];
+
+        const defaultIcon = sizeIcons.find(i => !i.appearances || i.appearances.length === 0);
+        const darkIcon = sizeIcons.find(i => i.appearances?.some(a => a.value === 'dark'));
+        const tintedIcon = sizeIcons.find(i => i.appearances?.some(a => a.value === 'tinted'));
+
+        const variants = [
+          { icon: defaultIcon, label: 'Any' }
+        ];
+
+        if (darkIcon) {
+          variants.push({ icon: darkIcon, label: 'Dark' });
+        }
+        if (tintedIcon) {
+          variants.push({ icon: tintedIcon, label: 'Tinted' });
+        }
+
+        const variantsHtml = variants.map(({ icon, label }) => {
+          if (icon && icon.filename) {
+            return `
+              <div class="variant-item" data-icon-filename="${icon.filename}" data-icon-uri="${icon.uri}" data-icon-fspath="${icon.fsPath || ''}" data-icon-size="${size}" data-icon-appearance="${label}" style="display: flex; flex-direction: column; align-items: center;">
+                <div class="image-slot filled">
+                  <img src="${icon.uri}" alt="${label}" style="max-width: 90px; max-height: 90px;" />
+                </div>
+                <div class="slot-label">${label}</div>
+              </div>
+            `;
+          } else {
+            return `
+              <div style="display: flex; flex-direction: column; align-items: center;">
+                <div class="image-slot empty">
+                  <span class="plus-icon">+</span>
+                </div>
+                <div class="slot-label">${label}</div>
+              </div>
+            `;
+          }
+        }).join('');
+
         return `
-          <div class="variant-item" data-icon-filename="${icon.filename}" data-icon-uri="${icon.uri}" data-icon-fspath="${icon.fsPath || ''}" data-icon-size="${size}" data-icon-appearance="${label}" style="display: flex; flex-direction: column; align-items: center;">
-            <div class="image-slot filled">
-              <img src="${icon.uri}" alt="${label}" style="max-width: 90px; max-height: 90px;" />
-            </div>
-            <div class="slot-label">${label}</div>
+          <div class="device-group" style="margin-bottom: 20px;">
+            <div class="slot-grid">${variantsHtml}</div>
+            <div class="device-group-label" style="border-top: none; padding-top: 5px; margin-top: 5px;">${size}</div>
           </div>
         `;
-      } else {
-        return `
-          <div style="display: flex; flex-direction: column; align-items: center;">
-            <div class="image-slot empty">
-              <span class="plus-icon">+</span>
-            </div>
-            <div class="slot-label">${label}</div>
-          </div>
-        `;
-      }
+      }).join('');
+
+      return `
+        <div class="platform-group" style="width: 100%; margin-bottom: 30px;">
+          <div class="platform-title" style="font-weight: 600; font-size: 14px; margin-bottom: 15px; padding-bottom: 5px; border-bottom: 1px solid var(--vscode-panel-border); text-align: left;">${platformLabels[key] || key}</div>
+          ${iconSlotsHtml}
+        </div>
+      `;
     }).join('');
-
-    return `
-      <div class="device-group">
-        <div class="slot-grid">${variantsHtml}</div>
-        <div class="device-group-label">${size}</div>
-      </div>
-    `;
-  }).join('');
 
   panel.innerHTML = `
     <div class="preview-container">
       <div class="preview-title">${escapeHtml(asset.name)}</div>
       <div class="preview-content" style="flex-direction: column; width: 100%;">
-        ${iconSlotsHtml}
+        ${contentHtml}
       </div>
     </div>
   `;
