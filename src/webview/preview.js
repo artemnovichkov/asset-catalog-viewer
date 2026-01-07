@@ -357,10 +357,20 @@ function renderAppIconPreview(asset, panel, vscode) {
           }
         }).join('');
 
+        let displaySize = size;
+        const sizeParts = size.split('x');
+        if (sizeParts.length >= 1) {
+          displaySize = `${sizeParts[0]}pt`;
+        }
+        const platformLabel = platformLabels[key] || key;
+
         return `
           <div class="device-group" style="margin-bottom: 20px;">
             <div class="slot-grid">${variantsHtml}</div>
-            <div class="device-group-label" style="border-top: none; padding-top: 5px; margin-top: 5px;">${size}</div>
+            <div class="device-group-label" style="border-top: none; padding-top: 5px; margin-top: 5px; line-height: 1.4;">
+              <div style="font-weight: 600; color: var(--vscode-foreground);">${platformLabel}</div>
+              <div style="font-weight: normal;">${displaySize}</div>
+            </div>
           </div>
         `;
       }).join('');
