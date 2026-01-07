@@ -32,6 +32,39 @@ export class XCAssetsViewer {
     const assets = await parser.parse(xcassetsPath);
     panel.webview.html = await this.getHtmlForWebview(panel.webview, assets, xcassetsPath);
 
+    // Watch for file system changes
+    const watcher = vscode.workspace.createFileSystemWatcher(
+      new vscode.RelativePattern(xcassetsPath, '**/*')
+    );
+
+    let debounceTimer: NodeJS.Timeout | undefined;
+    const refresh = async () => {
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
+      }
+      debounceTimer = setTimeout(async () => {
+        const updatedAssets = await parser.parse(xcassetsPath);
+        panel.webview.html = await this.getHtmlForWebview(panel.webview, updatedAssets, xcassetsPath);
+      }, 300);
+    };
+
+    watcher.onDidCreate(refresh);
+    watcher.onDidChange(refresh);
+    watcher.onDidDelete(deletedUri => {
+      if (deletedUri.fsPath === xcassetsPath) {
+        panel.dispose();
+        return;
+      }
+      refresh();
+    });
+
+    panel.onDidDispose(() => {
+      watcher.dispose();
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
+      }
+    });
+
     panel.webview.onDidReceiveMessage(async message => {
       const { spawn } = require('child_process');
 
