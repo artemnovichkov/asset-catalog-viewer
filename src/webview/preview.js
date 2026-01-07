@@ -287,10 +287,15 @@ function renderAppIconPreview(asset, panel, vscode) {
     const tintedIcon = icons.find(i => i.appearances?.some(a => a.value === 'tinted'));
 
     const variants = [
-      { icon: defaultIcon, label: 'Any' },
-      { icon: darkIcon, label: 'Dark' },
-      { icon: tintedIcon, label: 'Tinted' }
+      { icon: defaultIcon, label: 'Any' }
     ];
+
+    if (darkIcon) {
+      variants.push({ icon: darkIcon, label: 'Dark' });
+    }
+    if (tintedIcon) {
+      variants.push({ icon: tintedIcon, label: 'Tinted' });
+    }
 
     const variantsHtml = variants.map(({ icon, label }) => {
       if (icon && icon.filename) {
