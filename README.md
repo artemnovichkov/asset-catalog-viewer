@@ -13,6 +13,7 @@ A VS Code and Cursor extension that provides an Xcode-like interface for preview
 ### 🎨 Asset Type Support
 
 - **Image Sets** - View all scale variants (@1x, @2x, @3x) with device-specific variants (iPhone, iPad, Mac, Apple Watch, Apple TV, Apple Vision)
+- **PDF Support** - View PDF vector assets
 - **Color Sets** - Preview colors with light/dark mode variants, high contrast support, and color space information
 - **App Icon Sets** - Browse app icons organized by size and appearance variants
 - **Data Sets** - View data assets with content preview for text-based files
@@ -27,14 +28,12 @@ A VS Code and Cursor extension that provides an Xcode-like interface for preview
 
 ### ✨ Interactive Features
 
+- **Asset Management** - Rename and delete assets or folders directly from the interface
 - **Search Filter** - Filter assets by name in real-time across all folders
-- **Hierarchical Navigation** - Expandable folders matching your asset catalog structure
 - **Variant Selection** - Click on individual image/color variants to see detailed properties
 - **Quick Look** - Press Space to open selected assets in macOS Quick Look
 - **Show in Finder** - Right-click any asset to reveal it in Finder
 - **Resizable Panels** - Drag panel dividers to customize the layout
-- **PDF Support** - Automatic rendering of PDF vector assets
-- **VS Code Theming** - Automatically adapts to your VS Code theme (light/dark mode)
 
 ## Installation
 
