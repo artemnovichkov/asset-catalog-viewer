@@ -224,6 +224,27 @@ body {
   color: var(--vscode-descriptionForeground);
   opacity: 0.5;
 }
+.color-slot {
+  width: 90px;
+  height: 90px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  position: relative;
+}
+.color-slot.empty {
+  border: 2px dashed var(--vscode-panel-border);
+  background: var(--vscode-editor-background);
+}
+.color-slot.filled {
+  border: 3px solid #666;
+}
+.color-slot .plus-icon {
+  font-size: 24px;
+  color: var(--vscode-descriptionForeground);
+  opacity: 0.5;
+}
 .slot-label {
   font-size: 11px;
   color: var(--vscode-descriptionForeground);

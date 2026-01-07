@@ -48,11 +48,14 @@ export function renderColorProperties(asset, colorIndex, vscode) {
   }).join('');
 
   let appearancesText = 'None';
-  if (hasLuminosity.has('dark') || hasContrast.has('high')) {
-    const parts = [];
-    if (hasLuminosity.has('dark')) parts.push('Any, Dark');
-    if (hasContrast.has('high')) parts.push('High Contrast');
+  if (hasLuminosity.has('light') || hasLuminosity.has('dark') || hasContrast.has('high')) {
+    const parts = ['Any'];
+    if (hasLuminosity.has('light')) parts.push('Light');
+    if (hasLuminosity.has('dark')) parts.push('Dark');
     appearancesText = parts.join(', ');
+    if (hasContrast.has('high')) {
+      appearancesText += ' + High Contrast';
+    }
   }
 
   const universalHtml = idioms.has('universal')
@@ -97,26 +100,6 @@ export function renderColorProperties(asset, colorIndex, vscode) {
     <div class="property-section">
       <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">Gamut</div>
       <div class="property-value">${gamut}</div>
-    </div>
-    <div class="property-section">
-      <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">Direction</div>
-      <div class="property-value">Fixed</div>
-    </div>
-    <div class="property-section">
-      <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">Width Class</div>
-      <div class="property-value">Any</div>
-    </div>
-    <div class="property-section">
-      <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">Height Class</div>
-      <div class="property-value">Any</div>
-    </div>
-    <div class="property-section">
-      <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">Memory</div>
-      <div class="property-value">None</div>
-    </div>
-    <div class="property-section">
-      <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">Graphics</div>
-      <div class="property-value">None</div>
     </div>
     <div class="property-section">
       <div class="property-title">Color Space</div>
@@ -445,11 +428,14 @@ export function renderProperties(asset, vscode) {
     }).join('');
 
     let appearancesText = 'None';
-    if (hasLuminosity.has('dark') || hasContrast.has('high')) {
-      const parts = [];
-      if (hasLuminosity.has('dark')) parts.push('Any, Dark');
-      if (hasContrast.has('high')) parts.push('High Contrast');
+    if (hasLuminosity.has('light') || hasLuminosity.has('dark') || hasContrast.has('high')) {
+      const parts = ['Any'];
+      if (hasLuminosity.has('light')) parts.push('Light');
+      if (hasLuminosity.has('dark')) parts.push('Dark');
       appearancesText = parts.join(', ');
+      if (hasContrast.has('high')) {
+        appearancesText += ' + High Contrast';
+      }
     }
 
     const universalHtml = idioms.has('universal')

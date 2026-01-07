@@ -174,60 +174,73 @@ function renderColorPreview(asset, panel, vscode) {
     idiomGroups[idiom].push({ ...colorItem, colorIndex: idx });
   });
 
+  const idiomTitles = {
+    'universal': 'Universal',
+    'iphone': 'iPhone',
+    'ipad': 'iPad',
+    'mac': 'Mac',
+    'tv': 'Apple TV',
+    'watch': 'Apple Watch',
+    'car': 'CarPlay',
+    'vision': 'Apple Vision',
+    'Mac Catalyst Scaled': 'Mac Catalyst Scaled'
+  };
+
   const idiomHtml = Object.keys(idiomGroups).map(idiom => {
     const colors = idiomGroups[idiom];
-    const colorsHtml = colors.map(colorItem => {
-      const hasValidColor = colorItem.color && colorItem.color.components;
+
+    // Check which appearances exist
+    const hasLight = colors.some(c => c.appearances?.some(a => a.appearance === 'luminosity' && a.value === 'light'));
+    const hasDark = colors.some(c => c.appearances?.some(a => a.appearance === 'luminosity' && a.value === 'dark'));
+
+    // Build appearance slots: Any, Light (if exists), Dark (if exists)
+    const appearances = [
+      { key: 'any', label: 'Any Appearance' }
+    ];
+    if (hasLight) {
+      appearances.push({ key: 'light', label: 'Light' });
+    }
+    if (hasDark) {
+      appearances.push({ key: 'dark', label: 'Dark' });
+    }
+
+    const slotsHtml = appearances.map(({ key, label }) => {
+      let colorItem;
+      if (key === 'any') {
+        colorItem = colors.find(c => !c.appearances || c.appearances.length === 0);
+      } else if (key === 'light') {
+        colorItem = colors.find(c => c.appearances?.some(a => a.appearance === 'luminosity' && a.value === 'light'));
+      } else if (key === 'dark') {
+        colorItem = colors.find(c => c.appearances?.some(a => a.appearance === 'luminosity' && a.value === 'dark'));
+      }
+
+      const hasValidColor = colorItem?.color && colorItem.color.components;
       const colorValue = hasValidColor ? getColorValue(colorItem.color) : '';
-      const appearances = colorItem.appearances || [];
-      const luminosity = appearances.find(a => a.appearance === 'luminosity');
-      const contrast = appearances.find(a => a.appearance === 'contrast');
 
-      let label1 = luminosity?.value === 'dark' ? 'Dark' : 'Any Appearance';
-
-      const labelParts = [label1];
-      if (contrast?.value === 'high') {
-        labelParts.push('High Contrast');
+      if (hasValidColor) {
+        return `
+          <div class="variant-item" data-color-index="${colorItem.colorIndex}" style="display: flex; flex-direction: column; align-items: center;">
+            <div class="color-slot filled" style="background-color: ${colorValue};"></div>
+            <div class="slot-label">${label}</div>
+          </div>
+        `;
+      } else {
+        return `
+          <div style="display: flex; flex-direction: column; align-items: center;">
+            <div class="color-slot empty">
+              <span class="plus-icon">+</span>
+            </div>
+            <div class="slot-label">${label}</div>
+          </div>
+        `;
       }
-
-      if (colorItem.subtype === 'mac-catalyst') {
-        labelParts[0] = 'Mac Catalyst Scaled<br>' + labelParts[0];
-      }
-
-      const label = labelParts.join('<br>');
-
-      const colorPreviewHtml = hasValidColor
-        ? `<div class="color-preview" style="background-color: ${colorValue}"></div>`
-        : `<div class="color-preview-placeholder"></div>`;
-
-      return `
-        <div class="preview-item variant-item" data-color-index="${colorItem.colorIndex}">
-          ${colorPreviewHtml}
-          <div class="preview-label">${label}</div>
-        </div>
-      `;
     }).join('');
 
-    const idiomTitles = {
-      'universal': 'Universal',
-      'iphone': 'iPhone',
-      'ipad': 'iPad',
-      'mac': 'Mac',
-      'tv': 'Apple TV',
-      'watch': 'Apple Watch',
-      'car': 'CarPlay',
-      'vision': 'Apple Vision',
-      'Mac Catalyst Scaled': 'Mac Catalyst Scaled'
-    };
     const idiomTitle = idiomTitles[idiom] || idiom;
     return `
-      <div style="width: 100%; margin-bottom: 30px;">
-        <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 15px; justify-content: center;">
-          ${colorsHtml}
-        </div>
-        <div style="border-top: 1px solid var(--vscode-panel-border); padding-top: 10px;">
-          <div style="font-size: 14px; font-weight: 500; color: var(--vscode-descriptionForeground);">${idiomTitle}</div>
-        </div>
+      <div class="device-group">
+        <div class="slot-grid">${slotsHtml}</div>
+        <div class="device-group-label">${idiomTitle}</div>
       </div>
     `;
   }).join('');
@@ -235,7 +248,7 @@ function renderColorPreview(asset, panel, vscode) {
   panel.innerHTML = `
     <div class="preview-container">
       <div class="preview-title">${escapeHtml(asset.name)}</div>
-      <div class="preview-content" style="flex-direction: column; align-items: flex-start; width: 100%;">
+      <div class="preview-content" style="flex-direction: column; width: 100%;">
         ${idiomHtml}
       </div>
     </div>
