@@ -1,0 +1,40 @@
+// Flatten items into assets array (including folders)
+// Add unique path to each asset for reliable indexing
+export function flattenItems(items, parentPath = '') {
+  const assets = [];
+  items.forEach(item => {
+    if (item.type === 'folder') {
+      const folderPath = parentPath ? `${parentPath}/${item.name}` : item.name;
+      assets.push({ ...item, _path: folderPath });
+      assets.push(...flattenItems(item.children || [], folderPath));
+    } else {
+      const itemPath = parentPath ? `${parentPath}/${item.name}` : item.name;
+      assets.push({ ...item, _path: itemPath });
+    }
+  });
+  return assets;
+}
+
+// Filter items recursively by search text
+export function filterItems(items, searchText) {
+  if (!searchText) return items;
+
+  const lowerSearch = searchText.toLowerCase();
+
+  return items.filter(item => {
+    if (item.type === 'folder') {
+      const filteredChildren = filterItems(item.children || [], searchText);
+      return filteredChildren.length > 0;
+    } else {
+      return item.name.toLowerCase().includes(lowerSearch);
+    }
+  }).map(item => {
+    if (item.type === 'folder') {
+      return {
+        ...item,
+        children: filterItems(item.children || [], searchText)
+      };
+    }
+    return item;
+  });
+}
