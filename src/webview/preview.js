@@ -367,7 +367,7 @@ function renderAppIconPreview(asset, panel, vscode) {
         return `
           <div class="device-group" style="margin-bottom: 20px;">
             <div class="slot-grid">${variantsHtml}</div>
-            <div class="device-group-label" style="border-top: none; padding-top: 5px; margin-top: 5px; line-height: 1.4;">
+            <div class="device-group-label" style="border-top: 1px solid var(--vscode-panel-border) !important; padding-top: 5px; margin-top: 5px; line-height: 1.4;">
               <div style="font-weight: 600; color: var(--vscode-foreground);">${platformLabel}</div>
               <div style="font-weight: normal;">${displaySize}</div>
             </div>
@@ -377,7 +377,6 @@ function renderAppIconPreview(asset, panel, vscode) {
 
       return `
         <div class="platform-group" style="width: 100%; margin-bottom: 30px;">
-          <div class="platform-title" style="font-weight: 600; font-size: 14px; margin-bottom: 15px; padding-bottom: 5px; border-bottom: 1px solid var(--vscode-panel-border); text-align: left;">${platformLabels[key] || key}</div>
           ${iconSlotsHtml}
         </div>
       `;
