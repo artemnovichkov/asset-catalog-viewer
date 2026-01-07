@@ -32,8 +32,45 @@ export class XCAssetsViewer {
     const assets = await parser.parse(xcassetsPath);
     panel.webview.html = await this.getHtmlForWebview(panel.webview, assets, xcassetsPath);
 
-    panel.webview.onDidReceiveMessage(message => {
+    panel.webview.onDidReceiveMessage(async message => {
       const { spawn } = require('child_process');
+
+      if (message.command === 'rename') {
+        const { oldPath, newName, assetType } = message;
+
+        // Validate oldPath is within xcassetsPath
+        const resolvedOld = path.resolve(oldPath);
+        const catalogResolved = path.resolve(xcassetsPath);
+        if (!resolvedOld.startsWith(catalogResolved)) {
+          vscode.window.showErrorMessage('Invalid path');
+          return;
+        }
+
+        try {
+          const parentDir = path.dirname(resolvedOld);
+          let newPath: string;
+
+          if (assetType === 'folder') {
+            // Folder: rename directory
+            newPath = path.join(parentDir, newName);
+          } else {
+            // Asset: rename directory and update extension
+            const ext = path.extname(resolvedOld);
+            newPath = path.join(parentDir, newName + ext);
+          }
+
+          // Rename the directory
+          await fs.promises.rename(resolvedOld, newPath);
+
+          // Re-parse and refresh webview
+          const assets = await parser.parse(xcassetsPath);
+          panel.webview.html = await this.getHtmlForWebview(panel.webview, assets, xcassetsPath);
+
+        } catch (err: any) {
+          vscode.window.showErrorMessage(`Rename failed: ${err.message}`);
+        }
+        return;
+      }
 
       // Validate path
       if (!message.filePath) {

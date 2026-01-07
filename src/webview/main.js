@@ -23,6 +23,7 @@ let expandedFolders = new Set();
 let filterText = '';
 let imageObserver = null;
 let pdfObserver = null;
+let isRenaming = false;
 
 // Loading state management
 function showLoading() {
@@ -321,6 +322,13 @@ async function renderAssetList() {
       const idx = parseInt(item.dataset.index);
       selectAsset(idx);
     });
+
+    // Double-click -> Rename
+    item.addEventListener('dblclick', (e) => {
+      e.stopPropagation();
+      const idx = parseInt(item.dataset.index);
+      startRename(idx);
+    });
   });
 
   // Add click handlers for assets
@@ -328,6 +336,13 @@ async function renderAssetList() {
     item.addEventListener('click', () => {
       const idx = parseInt(item.dataset.index);
       selectAsset(idx);
+    });
+
+    // Double-click -> Rename
+    item.addEventListener('dblclick', (e) => {
+      e.stopPropagation();
+      const idx = parseInt(item.dataset.index);
+      startRename(idx);
     });
   });
 
@@ -1733,6 +1748,88 @@ function getColorValue(color) {
   return '#000000';
 }
 
+// Start rename mode for an asset
+function startRename(index) {
+  if (isRenaming) return;
+  isRenaming = true;
+
+  const asset = allAssets[index];
+  const listItem = document.querySelector(`.asset-list-item[data-index="${index}"]`);
+  if (!listItem) {
+    isRenaming = false;
+    return;
+  }
+
+  const nameSpan = listItem.querySelector('span');
+  if (!nameSpan) {
+    isRenaming = false;
+    return;
+  }
+
+  const currentName = asset.name;
+
+  // Create input field
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = currentName;
+  input.className = 'rename-input';
+  input.style.cssText = `
+    background: var(--vscode-input-background);
+    color: var(--vscode-input-foreground);
+    border: 1px solid var(--vscode-focusBorder);
+    padding: 2px 4px;
+    font-size: inherit;
+    font-family: inherit;
+    outline: none;
+    width: 100%;
+    box-sizing: border-box;
+  `;
+
+  nameSpan.replaceWith(input);
+  input.focus();
+  input.select();
+
+  const finishRename = (save) => {
+    if (!isRenaming) return;
+    isRenaming = false;
+
+    const newName = input.value.trim();
+
+    if (save && newName && newName !== currentName) {
+      // Send rename message to extension
+      vscode.postMessage({
+        command: 'rename',
+        oldPath: asset.path,
+        oldName: currentName,
+        newName: newName,
+        assetType: asset.type
+      });
+    } else {
+      // Restore original name
+      const newSpan = document.createElement('span');
+      newSpan.textContent = currentName;
+      input.replaceWith(newSpan);
+    }
+  };
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      e.stopPropagation();
+      finishRename(true);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      finishRename(false);
+    }
+  });
+
+  input.addEventListener('blur', () => {
+    // Small delay to allow click events to fire first
+    setTimeout(() => finishRename(true), 100);
+  });
+}
+
 // Initialize
 const vscode = acquireVsCodeApi();
 
@@ -1863,7 +1960,10 @@ const vscode = acquireVsCodeApi();
           }
         }
       } else if (e.key === 'Enter') {
-        // Enter doesn't do anything special for now
+        // Enter triggers rename on selected item
+        if (currentSelectedAssetIndex >= 0 && !isRenaming) {
+          startRename(currentSelectedAssetIndex);
+        }
       }
     }
   });
