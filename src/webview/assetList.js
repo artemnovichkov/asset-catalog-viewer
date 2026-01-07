@@ -161,6 +161,8 @@ export function toggleFolder(folderPath, assetsData, vscode) {
   } else {
     expandedFolders.add(folderPath);
   }
+  // Save expanded folders state
+  vscode.setState({ expandedFolders: Array.from(expandedFolders) });
   renderAssetList(assetsData, vscode).then(() => {
     if (currentSelectedAssetIndex >= 0) {
       document.querySelectorAll('.asset-list-item').forEach((item) => {

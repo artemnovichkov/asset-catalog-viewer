@@ -3,7 +3,7 @@ import '@dotlottie/player-component';
 
 import {
   allAssets, currentSelectedAssetIndex, expandedFolders,
-  setAllAssets, setFilterText
+  setAllAssets, setFilterText, setExpandedFolders
 } from './state.js';
 import { flattenItems } from './assetData.js';
 import { initResizers } from './resizer.js';
@@ -15,12 +15,28 @@ import { startRename, getIsRenaming } from './rename.js';
 const vscode = acquireVsCodeApi();
 const assetsData = window.assetsData;
 
+// Restore expanded folders from saved state
+const savedState = vscode.getState();
+if (savedState && savedState.expandedFolders) {
+  setExpandedFolders(new Set(savedState.expandedFolders));
+}
+
 // Flatten assets for indexing
 setAllAssets(flattenItems(assetsData.items));
 
 (async () => {
   initResizers();
   await renderAssetList(assetsData, vscode);
+
+  // Restore selection from saved state
+  if (savedState && savedState.selectedAssetPath) {
+    const idx = allAssets.findIndex(a => a._path === savedState.selectedAssetPath);
+    if (idx >= 0) {
+      selectAsset(idx, vscode);
+      // Clear saved selection after restoring
+      vscode.setState({ expandedFolders: savedState.expandedFolders });
+    }
+  }
 
   // Click on empty area deselects
   const assetList = document.getElementById('assetList');

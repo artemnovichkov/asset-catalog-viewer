@@ -1,4 +1,4 @@
-import { allAssets, isRenaming, setIsRenaming } from './state.js';
+import { allAssets, isRenaming, setIsRenaming, expandedFolders } from './state.js';
 
 // Start rename mode for an asset
 export function startRename(index, vscode) {
@@ -47,6 +47,14 @@ export function startRename(index, vscode) {
     const newName = input.value.trim();
 
     if (save && newName && newName !== currentName) {
+      // Calculate new path for selection restoration
+      const parentPath = asset._path.substring(0, asset._path.lastIndexOf('/'));
+      const newAssetPath = parentPath ? `${parentPath}/${newName}` : newName;
+      // Save state before rename triggers webview refresh
+      vscode.setState({
+        expandedFolders: Array.from(expandedFolders),
+        selectedAssetPath: newAssetPath
+      });
       vscode.postMessage({
         command: 'rename',
         oldPath: asset.path,

@@ -2,6 +2,7 @@
 export let allAssets = [];
 export let currentSelectedAssetIndex = -1;
 export let expandedFolders = new Set();
+export const setExpandedFolders = (v) => { expandedFolders = v; };
 export let filterText = '';
 export let isRenaming = false;
 export let leftWidth = 250;
