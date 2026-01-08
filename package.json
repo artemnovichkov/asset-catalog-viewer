@@ -2,7 +2,7 @@
   "name": "asset-catalog-viewer",
   "displayName": "Asset Catalog Viewer",
   "description": "View .xcassets content like in Xcode",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "publisher": "artemnovichkov",
   "author": {
     "name": "Artem Novichkov",
