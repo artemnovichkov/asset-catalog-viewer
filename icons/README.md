@@ -13,6 +13,7 @@ After installing the extension:
 
 This will show custom icons for common .xcassets folder names like:
 - Assets.xcassets
+- Preview Assets.xcassets
 - Images.xcassets
 - Media.xcassets
 - Resources.xcassets

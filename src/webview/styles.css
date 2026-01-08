@@ -227,6 +227,13 @@ body {
   color: var(--vscode-descriptionForeground);
   opacity: 0.5;
 }
+.image-slot.heic-placeholder {
+  border: 1px solid var(--vscode-panel-border);
+}
+.image-slot.heic-placeholder .codicon {
+  font-size: 32px;
+  color: var(--vscode-descriptionForeground);
+}
 .color-slot {
   width: 90px;
   height: 90px;

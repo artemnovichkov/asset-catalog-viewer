@@ -7,6 +7,7 @@
   },
   "folderNames": {
     "Assets.xcassets": "_xcassets_folder",
+    "Preview Assets.xcassets": "_xcassets_folder",
     "Images.xcassets": "_xcassets_folder",
     "Media.xcassets": "_xcassets_folder",
     "Resources.xcassets": "_xcassets_folder",
@@ -16,6 +17,7 @@
   },
   "folderNamesExpanded": {
     "Assets.xcassets": "_xcassets_folder",
+    "Preview Assets.xcassets": "_xcassets_folder",
     "Images.xcassets": "_xcassets_folder",
     "Media.xcassets": "_xcassets_folder",
     "Resources.xcassets": "_xcassets_folder",

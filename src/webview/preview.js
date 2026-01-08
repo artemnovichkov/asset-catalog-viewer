@@ -59,6 +59,7 @@ async function renderImagePreview(asset, panel, vscode) {
       if (isSingleUniversal) {
         const img = images[0];
         const isPdf = img.filename.toLowerCase().endsWith('.pdf');
+        const isHeic = img.filename.toLowerCase().endsWith('.heic');
 
         if (isPdf) {
           slotsHtml = `
@@ -67,6 +68,15 @@ async function renderImagePreview(asset, panel, vscode) {
                 <canvas style="max-width: 90px; max-height: 90px; position: relative; z-index: 1;"
                         data-pdf-url="${img.uri}"
                         data-preview-pdf="true"></canvas>
+              </div>
+              <div class="slot-label">All</div>
+            </div>
+          `;
+        } else if (isHeic) {
+          slotsHtml = `
+            <div class="variant-item" data-image-filename="${img.filename}" data-image-uri="${img.uri}" data-image-fspath="${img.fsPath || ''}" data-image-scale="All" style="display: flex; flex-direction: column; align-items: center;">
+              <div class="image-slot filled heic-placeholder">
+                <i class="codicon codicon-file-media"></i>
               </div>
               <div class="slot-label">All</div>
             </div>
@@ -87,6 +97,7 @@ async function renderImagePreview(asset, panel, vscode) {
         slotsHtml = scaleOrder.map(scale => {
           const img = images.find(i => i.scale === scale);
           const isPdf = img?.filename?.toLowerCase().endsWith('.pdf');
+          const isHeic = img?.filename?.toLowerCase().endsWith('.heic');
 
           if (img && img.filename) {
             if (isPdf) {
@@ -96,6 +107,15 @@ async function renderImagePreview(asset, panel, vscode) {
                     <canvas style="max-width: 90px; max-height: 90px; position: relative; z-index: 1;"
                             data-pdf-url="${img.uri}"
                             data-preview-pdf="true"></canvas>
+                  </div>
+                  <div class="slot-label">${scale}</div>
+                </div>
+              `;
+            } else if (isHeic) {
+              return `
+                <div class="variant-item" data-image-filename="${img.filename}" data-image-uri="${img.uri}" data-image-fspath="${img.fsPath || ''}" data-image-scale="${scale}" style="display: flex; flex-direction: column; align-items: center;">
+                  <div class="image-slot filled heic-placeholder">
+                    <i class="codicon codicon-file-media"></i>
                   </div>
                   <div class="slot-label">${scale}</div>
                 </div>

@@ -44,8 +44,11 @@ export async function renderAssetList(assetsData, vscode) {
           const firstImage = item.images.find(img => img.filename);
           if (firstImage) {
             const isPdf = firstImage.filename.toLowerCase().endsWith('.pdf');
+            const isHeic = firstImage.filename.toLowerCase().endsWith('.heic');
             if (isPdf) {
               iconHtml = `<div class="asset-thumbnail-container"><canvas class="asset-thumbnail-canvas" data-pdf-url="${firstImage.uri}" data-idx="${assetIndex}"></canvas></div>`;
+            } else if (isHeic) {
+              iconHtml = `<i class="codicon codicon-file-media asset-icon"></i>`;
             } else {
               iconHtml = `<img data-src="${firstImage.uri}" class="asset-thumbnail lazy-img" alt="${item.name}" />`;
             }
@@ -68,7 +71,7 @@ export async function renderAssetList(assetsData, vscode) {
             iconHtml = `<div class="asset-thumbnail-placeholder"></div>`;
           }
         } else {
-          iconHtml = `<i class="codicon codicon-database asset-icon"></i>`;
+          iconHtml = `<i class="codicon codicon-file asset-icon"></i>`;
         }
 
         html += `<div class="asset-list-item" data-index="${assetIndex}" data-path="${item.path || ''}" style="padding-left: ${indent + 24 + 8}px;">
