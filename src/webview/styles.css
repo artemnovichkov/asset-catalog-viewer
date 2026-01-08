@@ -7,6 +7,7 @@ body {
   display: grid;
   grid-template-columns: var(--left-width, 250px) 4px 1fr 4px var(--right-width, 300px);
   height: 100vh;
+  overflow: hidden;
   color: var(--vscode-foreground);
   background-color: var(--vscode-editor-background);
   font-family: var(--vscode-font-family);
@@ -30,6 +31,7 @@ body {
   border-right: 1px solid var(--vscode-panel-border);
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 .asset-list-container {
   flex: 1;
@@ -142,6 +144,7 @@ body {
   justify-content: flex-start;
   padding: 16px 40px 40px 40px;
   overflow: auto;
+  min-height: 0;
 }
 .preview-container {
   text-align: center;
@@ -320,6 +323,7 @@ body {
   border-left: 1px solid var(--vscode-panel-border);
   padding: 20px;
   overflow-y: auto;
+  min-height: 0;
 }
 .property-section {
   margin-bottom: 20px;
