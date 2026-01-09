@@ -157,17 +157,14 @@ export async function renderAppIconVariantProperties(asset, filename, uri, size,
 
   panel.innerHTML = `
     <div class="property-section">
-      <div class="property-title">Name</div>
+      <div class="property-title">App Icon</div>
+      <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 12px;">Name</div>
       <div class="property-value-with-button">
         <div class="property-value" style="flex: 1; margin-bottom: 0;">${escapeHtml(asset.name)}</div>
         <button class="finder-button" data-path="${asset.path}">
           <i class="codicon codicon-folder-opened"></i>
         </button>
       </div>
-    </div>
-    <div class="property-section">
-      <div class="property-title">Type</div>
-      <div class="property-value">App Icon Set</div>
     </div>
     <div class="property-section">
       <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">Platforms</div>
@@ -246,17 +243,14 @@ export async function renderImageVariantProperties(asset, filename, uri, scale, 
 
   panel.innerHTML = `
     <div class="property-section">
-      <div class="property-title">Name</div>
+      <div class="property-title">Image Set</div>
+      <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 12px;">Name</div>
       <div class="property-value-with-button">
         <div class="property-value" style="flex: 1; margin-bottom: 0;">${escapeHtml(asset.name)}</div>
         <button class="finder-button" data-path="${asset.path}">
           <i class="codicon codicon-folder-opened"></i>
         </button>
       </div>
-    </div>
-    <div class="property-section">
-      <div class="property-title">Type</div>
-      <div class="property-value">Image Set</div>
     </div>
     <div class="property-section">
       <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">Devices</div>
@@ -266,7 +260,7 @@ export async function renderImageVariantProperties(asset, filename, uri, scale, 
       </div>
     </div>
     <div class="property-section">
-      <div class="property-title">Scales</div>
+      <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">Scales</div>
       <div class="property-value">${scales}</div>
     </div>
     <div class="property-section" style="border-top: 1px solid var(--vscode-panel-border); padding-top: 16px; margin-top: 16px;">
@@ -323,17 +317,14 @@ export function renderProperties(asset, vscode) {
 
     panel.innerHTML = `
       <div class="property-section">
-        <div class="property-title">Name</div>
+        <div class="property-title">Image Set</div>
+        <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 12px;">Name</div>
         <div class="property-value-with-button">
           <div class="property-value" style="flex: 1; margin-bottom: 0;">${escapeHtml(asset.name)}</div>
           <button class="finder-button" data-path="${asset.path}">
             <i class="codicon codicon-folder-opened"></i>
           </button>
         </div>
-      </div>
-      <div class="property-section">
-        <div class="property-title">Type</div>
-        <div class="property-value">Image Set</div>
       </div>
       <div class="property-section">
         <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">Devices</div>
@@ -343,31 +334,46 @@ export function renderProperties(asset, vscode) {
         </div>
       </div>
       <div class="property-section">
-        <div class="property-title">Scales</div>
+        <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">Scales</div>
         <div class="property-value">${scales}</div>
       </div>
     `;
 
     addFinderButtonHandler(panel, vscode);
   } else if (asset.type === 'appicon') {
-    const platforms = new Set();
-    const sizes = new Set();
+    const platformSizes = { ios: new Set(), macos: new Set(), watchos: new Set() };
 
     asset.icons.forEach(icon => {
-      if (icon.platform) {
-        platforms.add(icon.platform);
+      let platform = icon.platform;
+      // macOS icons use idiom: "mac" without platform field
+      if (!platform && icon.idiom === 'mac') {
+        platform = 'macos';
       }
-      if (icon.size) {
-        sizes.add(icon.size);
+      // watchOS icons use idiom: "watch" without platform field
+      if (!platform && icon.idiom === 'watch') {
+        platform = 'watchos';
+      }
+      platform = platform || 'ios';
+      if (platformSizes[platform] && icon.size) {
+        platformSizes[platform].add(icon.size);
       }
     });
 
-    const platformsList = Array.from(platforms).join(', ');
-    const sizesList = Array.from(sizes).join(', ');
+    const getPlatformValue = (platform, hasSingleSizeOption) => {
+      const sizes = platformSizes[platform];
+      if (sizes.size === 0) return 'None';
+      if (hasSingleSizeOption && sizes.size === 1) return 'Single Size';
+      return 'All Sizes';
+    };
+
+    const iosValue = getPlatformValue('ios', true);
+    const macosValue = getPlatformValue('macos', false);
+    const watchosValue = getPlatformValue('watchos', true);
 
     panel.innerHTML = `
       <div class="property-section">
-        <div class="property-title">Name</div>
+        <div class="property-title">App Icon</div>
+        <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 12px;">Name</div>
         <div class="property-value-with-button">
           <div class="property-value" style="flex: 1; margin-bottom: 0;">${escapeHtml(asset.name)}</div>
           <button class="finder-button" data-path="${asset.path}">
@@ -376,16 +382,18 @@ export function renderProperties(asset, vscode) {
         </div>
       </div>
       <div class="property-section">
-        <div class="property-title">Type</div>
-        <div class="property-value">App Icon Set</div>
-      </div>
-      <div class="property-section">
-        <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">Platforms</div>
-        <div class="property-value">${platformsList || 'iOS'}</div>
-      </div>
-      <div class="property-section">
-        <div class="property-title">Sizes</div>
-        <div class="property-value">${sizesList}</div>
+        <div class="platform-row">
+          <span class="platform-label">iOS</span>
+          <span class="platform-value">${iosValue}</span>
+        </div>
+        <div class="platform-row">
+          <span class="platform-label">macOS</span>
+          <span class="platform-value">${macosValue}</span>
+        </div>
+        <div class="platform-row">
+          <span class="platform-label">watchOS</span>
+          <span class="platform-value">${watchosValue}</span>
+        </div>
       </div>
     `;
 
@@ -480,7 +488,8 @@ export function renderProperties(asset, vscode) {
   } else if (asset.type === 'data') {
     panel.innerHTML = `
       <div class="property-section">
-        <div class="property-title">Name</div>
+        <div class="property-title">Data Set</div>
+        <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 12px;">Name</div>
         <div class="property-value-with-button">
           <div class="property-value" style="flex: 1; margin-bottom: 0;">${escapeHtml(asset.name)}</div>
           <button class="finder-button" data-path="${asset.path}">
@@ -494,17 +503,14 @@ export function renderProperties(asset, vscode) {
   } else if (asset.type === 'folder') {
     panel.innerHTML = `
       <div class="property-section">
-        <div class="property-title">Name</div>
+        <div class="property-title">Folder</div>
+        <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 12px;">Name</div>
         <div class="property-value-with-button">
           <div class="property-value" style="flex: 1; margin-bottom: 0;">${escapeHtml(asset.name)}</div>
           <button class="finder-button" data-path="${asset.path}">
             <i class="codicon codicon-folder-opened"></i>
           </button>
         </div>
-      </div>
-      <div class="property-section">
-        <div class="property-title">Type</div>
-        <div class="property-value">Folder</div>
       </div>
     `;
 
