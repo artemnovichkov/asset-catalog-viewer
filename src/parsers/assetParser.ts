@@ -103,7 +103,9 @@ export class AssetParser {
     });
 
     const results = await Promise.all(parsePromises);
-    return results.filter((item): item is AssetItem => item !== null);
+    return results
+      .filter((item): item is AssetItem => item !== null)
+      .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
   }
 
   private async parseImageSet(imageSetPath: string): Promise<ImageSet | null> {
