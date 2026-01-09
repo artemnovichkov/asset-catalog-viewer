@@ -31,6 +31,7 @@ export interface AppIconContents {
   images?: Array<{
     filename?: string;
     size?: string;
+    scale?: string;
     idiom?: string;
     platform?: string;
     appearances?: Array<{
@@ -93,6 +94,7 @@ export interface ConvertedDataItem {
 export interface ConvertedAppIconVariant {
   filename: string;
   size?: string;
+  scale?: string;
   idiom: string;
   platform?: string;
   appearances: AppearanceVariant[];
@@ -163,6 +165,7 @@ export interface AppIconSet {
 export interface AppIconVariant {
   filename: string;
   size?: string;
+  scale?: string;
   idiom: string;
   platform?: string;
   appearances: AppearanceVariant[];

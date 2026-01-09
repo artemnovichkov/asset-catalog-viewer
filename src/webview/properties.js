@@ -115,7 +115,7 @@ export function renderColorProperties(asset, colorIndex, vscode) {
 }
 
 // Render app icon variant properties
-export async function renderAppIconVariantProperties(asset, filename, uri, size, appearance, vscode) {
+export async function renderAppIconVariantProperties(asset, filename, uri, size, scale, appearance, vscode) {
   const panel = document.getElementById('propertiesPanel');
 
   let imageWidth = 0;
@@ -148,6 +148,13 @@ export async function renderAppIconVariantProperties(asset, filename, uri, size,
 
   const platformsList = Array.from(platforms).join(', ');
 
+  // Show Scale for macOS icons, Appearance for iOS icons
+  const scaleOrAppearanceHtml = scale
+    ? `<div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px; margin-top: 12px;">Scale</div>
+      <div class="property-value">${scale}</div>`
+    : `<div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px; margin-top: 12px;">Appearance</div>
+      <div class="property-value">${appearance}</div>`;
+
   panel.innerHTML = `
     <div class="property-section">
       <div class="property-title">Name</div>
@@ -170,8 +177,7 @@ export async function renderAppIconVariantProperties(asset, filename, uri, size,
       <div class="property-title">Icon</div>
       <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px; margin-top: 12px;">Size</div>
       <div class="property-value">${size}</div>
-      <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px; margin-top: 12px;">Appearance</div>
-      <div class="property-value">${appearance}</div>
+      ${scaleOrAppearanceHtml}
       <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px; margin-top: 12px;">File Name</div>
       <div class="property-value">${escapeHtml(filename)}</div>
       <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px; margin-top: 12px;">Image Size</div>

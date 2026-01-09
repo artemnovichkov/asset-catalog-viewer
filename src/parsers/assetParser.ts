@@ -182,6 +182,7 @@ export class AssetParser {
       icons.push({
         filename: image.filename || '',
         size: image.size,
+        scale: image.scale,
         idiom: image.idiom || 'universal',
         platform: image.platform,
         appearances: image.appearances || [],

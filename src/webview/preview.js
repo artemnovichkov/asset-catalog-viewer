@@ -340,25 +340,40 @@ function renderAppIconPreview(asset, panel, vscode) {
       const iconSlotsHtml = Object.keys(sizeGroups).map(size => {
         const sizeIcons = sizeGroups[size];
 
-        const defaultIcon = sizeIcons.find(i => !i.appearances || i.appearances.length === 0);
-        const darkIcon = sizeIcons.find(i => i.appearances?.some(a => a.value === 'dark'));
-        const tintedIcon = sizeIcons.find(i => i.appearances?.some(a => a.value === 'tinted'));
+        // Check if icons have scale (macOS style) or appearances (iOS style)
+        const hasScale = sizeIcons.some(i => i.scale);
 
-        const variants = [
-          { icon: defaultIcon, label: 'Any' }
-        ];
+        let variants = [];
 
-        if (darkIcon) {
-          variants.push({ icon: darkIcon, label: 'Dark' });
-        }
-        if (tintedIcon) {
-          variants.push({ icon: tintedIcon, label: 'Tinted' });
+        if (hasScale) {
+          // macOS style: group by scale
+          const scaleOrder = ['1x', '2x', '3x'];
+          scaleOrder.forEach(scale => {
+            const icon = sizeIcons.find(i => i.scale === scale);
+            if (icon) {
+              variants.push({ icon, label: scale });
+            }
+          });
+        } else {
+          // iOS style: group by appearances
+          const defaultIcon = sizeIcons.find(i => !i.appearances || i.appearances.length === 0);
+          const darkIcon = sizeIcons.find(i => i.appearances?.some(a => a.value === 'dark'));
+          const tintedIcon = sizeIcons.find(i => i.appearances?.some(a => a.value === 'tinted'));
+
+          variants.push({ icon: defaultIcon, label: 'Any' });
+
+          if (darkIcon) {
+            variants.push({ icon: darkIcon, label: 'Dark' });
+          }
+          if (tintedIcon) {
+            variants.push({ icon: tintedIcon, label: 'Tinted' });
+          }
         }
 
         const variantsHtml = variants.map(({ icon, label }) => {
           if (icon && icon.filename) {
             return `
-              <div class="variant-item" data-icon-filename="${icon.filename}" data-icon-uri="${icon.uri}" data-icon-fspath="${icon.fsPath || ''}" data-icon-size="${size}" data-icon-appearance="${label}" style="display: flex; flex-direction: column; align-items: center;">
+              <div class="variant-item" data-icon-filename="${icon.filename}" data-icon-uri="${icon.uri}" data-icon-fspath="${icon.fsPath || ''}" data-icon-size="${size}" data-icon-scale="${icon.scale || ''}" data-icon-appearance="${label}" style="display: flex; flex-direction: column; align-items: center;">
                 <div class="image-slot filled">
                   <img src="${icon.uri}" alt="${label}" style="max-width: 90px; max-height: 90px;" />
                 </div>
@@ -422,9 +437,10 @@ function renderAppIconPreview(asset, panel, vscode) {
       const filename = item.dataset.iconFilename;
       const uri = item.dataset.iconUri;
       const size = item.dataset.iconSize;
+      const scale = item.dataset.iconScale;
       const appearance = item.dataset.iconAppearance;
 
-      await renderAppIconVariantProperties(asset, filename, uri, size, appearance, vscode);
+      await renderAppIconVariantProperties(asset, filename, uri, size, scale, appearance, vscode);
     });
   });
 }
