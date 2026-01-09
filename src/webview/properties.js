@@ -72,42 +72,45 @@ export function renderColorProperties(asset, colorIndex, vscode) {
     const g = parseFloat(components.green);
     const b = parseFloat(components.blue);
     const a = components.alpha !== undefined ? parseFloat(components.alpha) : 1;
-    componentsHtml = `<div class="property-value">R: ${r}, G: ${g}, B: ${b}, A: ${a}</div>`;
+    componentsHtml = `<div class="property-row-value">R: ${r}, G: ${g}, B: ${b}, A: ${a}</div>`;
   }
 
   panel.innerHTML = `
     <div class="property-section">
       <div class="property-title">Color Set</div>
-      <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 12px;">Name</div>
-      <div class="property-value-with-button">
-        <div class="property-value" style="flex: 1; margin-bottom: 0;">${escapeHtml(asset.name)}</div>
+      <div class="property-row">
+        <span class="property-row-label">Name</span>
+        <div class="property-row-value" style="flex: 1;">${escapeHtml(asset.name)}</div>
         <button class="finder-button" data-path="${asset.path}">
           <i class="codicon codicon-folder-opened"></i>
         </button>
       </div>
-    </div>
-    <div class="property-section">
-      <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">Devices</div>
-      <div style="font-size: 12px; line-height: 1.5;">
-        ${universalHtml}
-        ${devicesHtml}
+      <div class="property-row" style="align-items: flex-start;">
+        <span class="property-row-label">Devices</span>
+        <div style="font-size: 12px; line-height: 1.5;">
+          ${universalHtml}
+          ${devicesHtml}
+        </div>
+      </div>
+      <div class="property-row">
+        <span class="property-row-label">Appearances</span>
+        <div class="property-row-value">${appearancesText}</div>
+      </div>
+      <div class="property-row">
+        <span class="property-row-label">Gamut</span>
+        <div class="property-row-value">${gamut}</div>
       </div>
     </div>
     <div class="property-section">
-      <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">Appearances</div>
-      <div class="property-value">${appearancesText}</div>
-    </div>
-    <div class="property-section">
-      <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">Gamut</div>
-      <div class="property-value">${gamut}</div>
-    </div>
-    <div class="property-section">
-      <div class="property-title">Color Space</div>
-      <div class="property-value">${colorSpace}</div>
-    </div>
-    <div class="property-section">
-      <div class="property-title">Components</div>
-      ${componentsHtml}
+      <div class="property-title">Color</div>
+      <div class="property-row">
+        <span class="property-row-label">Color Space</span>
+        <div class="property-row-value">${colorSpace}</div>
+      </div>
+      ${componentsHtml ? `<div class="property-row">
+        <span class="property-row-label">Components</span>
+        ${componentsHtml}
+      </div>` : ''}
     </div>
   `;
 
@@ -150,35 +153,45 @@ export async function renderAppIconVariantProperties(asset, filename, uri, size,
 
   // Show Scale for macOS icons, Appearance for iOS icons
   const scaleOrAppearanceHtml = scale
-    ? `<div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px; margin-top: 12px;">Scale</div>
-      <div class="property-value">${scale}</div>`
-    : `<div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px; margin-top: 12px;">Appearance</div>
-      <div class="property-value">${appearance}</div>`;
+    ? `<div class="property-row">
+        <span class="property-row-label">Scale</span>
+        <div class="property-row-value">${scale}</div>
+      </div>`
+    : `<div class="property-row">
+        <span class="property-row-label">Appearance</span>
+        <div class="property-row-value">${appearance}</div>
+      </div>`;
 
   panel.innerHTML = `
     <div class="property-section">
       <div class="property-title">App Icon</div>
-      <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 12px;">Name</div>
-      <div class="property-value-with-button">
-        <div class="property-value" style="flex: 1; margin-bottom: 0;">${escapeHtml(asset.name)}</div>
+      <div class="property-row">
+        <span class="property-row-label">Name</span>
+        <div class="property-row-value" style="flex: 1;">${escapeHtml(asset.name)}</div>
         <button class="finder-button" data-path="${asset.path}">
           <i class="codicon codicon-folder-opened"></i>
         </button>
       </div>
-    </div>
-    <div class="property-section">
-      <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">Platforms</div>
-      <div class="property-value">${platformsList || 'iOS'}</div>
+      <div class="property-row">
+        <span class="property-row-label">Platforms</span>
+        <div class="property-row-value">${platformsList || 'iOS'}</div>
+      </div>
     </div>
     <div class="property-section" style="border-top: 1px solid var(--vscode-panel-border); padding-top: 16px; margin-top: 16px;">
       <div class="property-title">Icon</div>
-      <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px; margin-top: 12px;">Size</div>
-      <div class="property-value">${size}</div>
+      <div class="property-row">
+        <span class="property-row-label">Size</span>
+        <div class="property-row-value">${size}</div>
+      </div>
       ${scaleOrAppearanceHtml}
-      <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px; margin-top: 12px;">File Name</div>
-      <div class="property-value">${escapeHtml(filename)}</div>
-      <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px; margin-top: 12px;">Image Size</div>
-      <div class="property-value">${imageSizeText}</div>
+      <div class="property-row">
+        <span class="property-row-label">File Name</span>
+        <div class="property-row-value">${escapeHtml(filename)}</div>
+      </div>
+      <div class="property-row">
+        <span class="property-row-label">Image Size</span>
+        <div class="property-row-value">${imageSizeText}</div>
+      </div>
     </div>
   `;
 
@@ -248,37 +261,43 @@ export async function renderImageVariantProperties(asset, filename, uri, scale, 
   panel.innerHTML = `
     <div class="property-section">
       <div class="property-title">Image Set</div>
-      <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 12px;">Name</div>
-      <div class="property-value-with-button">
-        <div class="property-value" style="flex: 1; margin-bottom: 0;">${escapeHtml(asset.name)}</div>
+      <div class="property-row">
+        <span class="property-row-label">Name</span>
+        <div class="property-row-value" style="flex: 1;">${escapeHtml(asset.name)}</div>
         <button class="finder-button" data-path="${asset.path}">
           <i class="codicon codicon-folder-opened"></i>
         </button>
       </div>
-    </div>
-    <div class="property-section">
-      <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">Devices</div>
-      <div style="font-size: 12px; line-height: 1.5;">
-        ${universalHtml}
-        ${devicesHtml}
+      <div class="property-row">
+        <span class="property-row-label">Render As</span>
+        <div class="property-row-value">${renderAsText}</div>
       </div>
-    </div>
-    <div class="property-section">
-      <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">Scales</div>
-      <div class="property-value">${scalesText}</div>
-    </div>
-    <div class="property-section">
-      <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">Render As</div>
-      <div class="property-value">${renderAsText}</div>
+      <div class="property-row" style="align-items: flex-start;">
+        <span class="property-row-label">Devices</span>
+        <div style="font-size: 12px; line-height: 1.5;">
+          ${universalHtml}
+          ${devicesHtml}
+        </div>
+      </div>
+      <div class="property-row">
+        <span class="property-row-label">Scales</span>
+        <div class="property-row-value">${scalesText}</div>
+      </div>
     </div>
     <div class="property-section" style="border-top: 1px solid var(--vscode-panel-border); padding-top: 16px; margin-top: 16px;">
       <div class="property-title">Image</div>
-      <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px; margin-top: 12px;">File Name</div>
-      <div class="property-value">${escapeHtml(filename)}</div>
-      <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px; margin-top: 12px;">Image Size</div>
-      <div class="property-value">${imageSizeText}</div>
-      <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px; margin-top: 12px;">Color Space</div>
-      <div class="property-value">sRGB IEC61966-2.1</div>
+      <div class="property-row">
+        <span class="property-row-label">File Name</span>
+        <div class="property-row-value">${escapeHtml(filename)}</div>
+      </div>
+      <div class="property-row">
+        <span class="property-row-label">Image Size</span>
+        <div class="property-row-value">${imageSizeText}</div>
+      </div>
+      <div class="property-row">
+        <span class="property-row-label">Color Space</span>
+        <div class="property-row-value">sRGB IEC61966-2.1</div>
+      </div>
     </div>
   `;
 
@@ -328,28 +347,28 @@ export function renderProperties(asset, vscode) {
     panel.innerHTML = `
       <div class="property-section">
         <div class="property-title">Image Set</div>
-        <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 12px;">Name</div>
-        <div class="property-value-with-button">
-          <div class="property-value" style="flex: 1; margin-bottom: 0;">${escapeHtml(asset.name)}</div>
+        <div class="property-row">
+          <span class="property-row-label">Name</span>
+          <div class="property-row-value" style="flex: 1;">${escapeHtml(asset.name)}</div>
           <button class="finder-button" data-path="${asset.path}">
             <i class="codicon codicon-folder-opened"></i>
           </button>
         </div>
-      </div>
-      <div class="property-section">
-        <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">Devices</div>
-        <div style="font-size: 12px; line-height: 1.5;">
-          ${universalHtml}
-          ${devicesHtml}
+        <div class="property-row">
+          <span class="property-row-label">Render As</span>
+          <div class="property-row-value">${renderAsText}</div>
         </div>
-      </div>
-      <div class="property-section">
-        <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">Scales</div>
-        <div class="property-value">${scalesText}</div>
-      </div>
-      <div class="property-section">
-        <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">Render As</div>
-        <div class="property-value">${renderAsText}</div>
+        <div class="property-row" style="align-items: flex-start;">
+          <span class="property-row-label">Devices</span>
+          <div style="font-size: 12px; line-height: 1.5;">
+            ${universalHtml}
+            ${devicesHtml}
+          </div>
+        </div>
+        <div class="property-row">
+          <span class="property-row-label">Scales</span>
+          <div class="property-row-value">${scalesText}</div>
+        </div>
       </div>
     `;
 
@@ -387,26 +406,24 @@ export function renderProperties(asset, vscode) {
     panel.innerHTML = `
       <div class="property-section">
         <div class="property-title">App Icon</div>
-        <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 12px;">Name</div>
-        <div class="property-value-with-button">
-          <div class="property-value" style="flex: 1; margin-bottom: 0;">${escapeHtml(asset.name)}</div>
+        <div class="property-row">
+          <span class="property-row-label">Name</span>
+          <div class="property-row-value" style="flex: 1;">${escapeHtml(asset.name)}</div>
           <button class="finder-button" data-path="${asset.path}">
             <i class="codicon codicon-folder-opened"></i>
           </button>
         </div>
-      </div>
-      <div class="property-section">
-        <div class="platform-row">
-          <span class="platform-label">iOS</span>
-          <span class="platform-value">${iosValue}</span>
+        <div class="property-row">
+          <span class="property-row-label">iOS</span>
+          <div class="property-row-value">${iosValue}</div>
         </div>
-        <div class="platform-row">
-          <span class="platform-label">macOS</span>
-          <span class="platform-value">${macosValue}</span>
+        <div class="property-row">
+          <span class="property-row-label">macOS</span>
+          <div class="property-row-value">${macosValue}</div>
         </div>
-        <div class="platform-row">
-          <span class="platform-label">watchOS</span>
-          <span class="platform-value">${watchosValue}</span>
+        <div class="property-row">
+          <span class="property-row-label">watchOS</span>
+          <div class="property-row-value">${watchosValue}</div>
         </div>
       </div>
     `;
@@ -473,28 +490,28 @@ export function renderProperties(asset, vscode) {
     panel.innerHTML = `
       <div class="property-section">
         <div class="property-title">Color Set</div>
-        <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 12px;">Name</div>
-        <div class="property-value-with-button">
-          <div class="property-value" style="flex: 1; margin-bottom: 0;">${escapeHtml(asset.name)}</div>
+        <div class="property-row">
+          <span class="property-row-label">Name</span>
+          <div class="property-row-value" style="flex: 1;">${escapeHtml(asset.name)}</div>
           <button class="finder-button" data-path="${asset.path}">
             <i class="codicon codicon-folder-opened"></i>
           </button>
         </div>
-      </div>
-      <div class="property-section">
-        <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">Devices</div>
-        <div style="font-size: 12px; line-height: 1.5;">
-          ${universalHtml}
-          ${devicesHtml}
+        <div class="property-row" style="align-items: flex-start;">
+          <span class="property-row-label">Devices</span>
+          <div style="font-size: 12px; line-height: 1.5;">
+            ${universalHtml}
+            ${devicesHtml}
+          </div>
         </div>
-      </div>
-      <div class="property-section">
-        <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">Appearances</div>
-        <div class="property-value">${appearancesText}</div>
-      </div>
-      <div class="property-section">
-        <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">Gamut</div>
-        <div class="property-value">${gamut}</div>
+        <div class="property-row">
+          <span class="property-row-label">Appearances</span>
+          <div class="property-row-value">${appearancesText}</div>
+        </div>
+        <div class="property-row">
+          <span class="property-row-label">Gamut</span>
+          <div class="property-row-value">${gamut}</div>
+        </div>
       </div>
     `;
 
@@ -503,9 +520,9 @@ export function renderProperties(asset, vscode) {
     panel.innerHTML = `
       <div class="property-section">
         <div class="property-title">Data Set</div>
-        <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 12px;">Name</div>
-        <div class="property-value-with-button">
-          <div class="property-value" style="flex: 1; margin-bottom: 0;">${escapeHtml(asset.name)}</div>
+        <div class="property-row">
+          <span class="property-row-label">Name</span>
+          <div class="property-row-value" style="flex: 1;">${escapeHtml(asset.name)}</div>
           <button class="finder-button" data-path="${asset.path}">
             <i class="codicon codicon-folder-opened"></i>
           </button>
@@ -518,9 +535,9 @@ export function renderProperties(asset, vscode) {
     panel.innerHTML = `
       <div class="property-section">
         <div class="property-title">Folder</div>
-        <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 12px;">Name</div>
-        <div class="property-value-with-button">
-          <div class="property-value" style="flex: 1; margin-bottom: 0;">${escapeHtml(asset.name)}</div>
+        <div class="property-row">
+          <span class="property-row-label">Name</span>
+          <div class="property-row-value" style="flex: 1;">${escapeHtml(asset.name)}</div>
           <button class="finder-button" data-path="${asset.path}">
             <i class="codicon codicon-folder-opened"></i>
           </button>
