@@ -3,6 +3,64 @@ import { renderPdfToCanvas } from './pdfRenderer.js';
 import { initLottiePlayer, initDotLottiePlayer } from './lottiePlayer.js';
 import { renderImageVariantProperties, renderAppIconVariantProperties, renderColorProperties } from './properties.js';
 
+// Shared device/platform labels
+const DEVICE_LABELS = {
+  universal: 'Universal', iphone: 'iPhone', ipad: 'iPad',
+  'mac-catalyst': 'Mac Catalyst Scaled', mac: 'Mac', vision: 'Apple Vision',
+  watch: 'Apple Watch', tv: 'Apple TV', car: 'CarPlay',
+  ios: 'iOS', macos: 'macOS', watchos: 'watchOS', tvos: 'tvOS'
+};
+
+// Group items by key
+function groupBy(items, keyFn) {
+  return items.reduce((groups, item, idx) => {
+    const key = keyFn(item);
+    (groups[key] ||= []).push({ ...item, _idx: idx });
+    return groups;
+  }, {});
+}
+
+// Render empty slot
+function emptySlot(label, type = 'image') {
+  const slotClass = type === 'color' ? 'color-slot' : 'image-slot';
+  return `
+    <div style="display: flex; flex-direction: column; align-items: center;">
+      <div class="${slotClass} empty"><span class="plus-icon">+</span></div>
+      <div class="slot-label">${label}</div>
+    </div>`;
+}
+
+// Render preview container wrapper
+function previewContainer(name, content) {
+  return `
+    <div class="preview-container">
+      <div class="preview-title">${escapeHtml(name)}</div>
+      <div class="preview-content" style="flex-direction: column; width: 100%;">
+        ${content}
+      </div>
+    </div>`;
+}
+
+// Render device group
+function deviceGroup(slotsHtml, label, extra = '') {
+  return `
+    <div class="device-group"${extra}>
+      <div class="slot-grid">${slotsHtml}</div>
+      <div class="device-group-label">${label}</div>
+    </div>`;
+}
+
+// Setup click handlers for variant selection
+function setupVariantClicks(panel, selector, dataAttr, handler) {
+  panel.querySelectorAll(selector).forEach(item => {
+    item.addEventListener('click', async () => {
+      panel.querySelectorAll(selector).forEach(v => v.classList.remove('selected'));
+      item.classList.add('selected');
+      await handler(item.dataset);
+    });
+  });
+}
+
 // Render preview panel
 export async function renderPreview(asset, vscode) {
   const panel = document.getElementById('previewPanel');
@@ -18,558 +76,232 @@ export async function renderPreview(asset, vscode) {
   }
 }
 
+// Render image slot (PDF, HEIC, or regular)
+function imageSlot(img, label) {
+  const ext = img.filename.toLowerCase().split('.').pop();
+  const data = `data-image-filename="${img.filename}" data-image-uri="${img.uri}" data-image-fspath="${img.fsPath || ''}" data-image-scale="${label}"`;
+
+  let content;
+  if (ext === 'pdf') {
+    content = `<canvas style="max-width: 90px; max-height: 90px; position: relative; z-index: 1;" data-pdf-url="${img.uri}" data-preview-pdf="true"></canvas>`;
+  } else if (ext === 'heic') {
+    content = `<i class="codicon codicon-file-media"></i>`;
+  } else {
+    content = `<img src="${img.uri}" alt="${label}" />`;
+  }
+
+  const slotClass = ext === 'heic' ? 'image-slot filled heic-placeholder' : 'image-slot filled';
+  return `
+    <div class="variant-item" ${data} style="display: flex; flex-direction: column; align-items: center;">
+      <div class="${slotClass}">${content}</div>
+      <div class="slot-label">${label}</div>
+    </div>`;
+}
+
 async function renderImagePreview(asset, panel, vscode) {
-  const idiomGroups = {};
   const idiomOrder = ['universal', 'iphone', 'ipad', 'mac-catalyst', 'mac', 'vision', 'watch', 'tv'];
-
-  asset.images.forEach(img => {
-    let idiomKey = img.idiom;
-    if (img.subtype === 'mac-catalyst') {
-      idiomKey = 'mac-catalyst';
-    }
-    if (!idiomGroups[idiomKey]) {
-      idiomGroups[idiomKey] = [];
-    }
-    idiomGroups[idiomKey].push(img);
-  });
-
-  const deviceLabels = {
-    'universal': 'Universal',
-    'iphone': 'iPhone',
-    'ipad': 'iPad',
-    'mac-catalyst': 'Mac Catalyst Scaled',
-    'mac': 'Mac',
-    'vision': 'Apple Vision',
-    'watch': 'Apple Watch',
-    'tv': 'Apple TV'
-  };
+  const idiomGroups = groupBy(asset.images, img => img.subtype === 'mac-catalyst' ? 'mac-catalyst' : img.idiom);
 
   const groupsHtml = idiomOrder
     .filter(idiom => idiomGroups[idiom])
     .map(idiom => {
       const images = idiomGroups[idiom];
+      const isSingleUniversal = idiom === 'universal' && images.length === 1 && images[0].filename && !images[0].scale;
 
-      const isSingleUniversal = idiom === 'universal' &&
-                               images.length === 1 &&
-                               images[0].filename &&
-                               !images[0].scale;
-
-      let slotsHtml = '';
-
+      let slotsHtml;
       if (isSingleUniversal) {
-        const img = images[0];
-        const isPdf = img.filename.toLowerCase().endsWith('.pdf');
-        const isHeic = img.filename.toLowerCase().endsWith('.heic');
-
-        if (isPdf) {
-          slotsHtml = `
-            <div class="variant-item" data-image-filename="${img.filename}" data-image-uri="${img.uri}" data-image-fspath="${img.fsPath || ''}" data-image-scale="All" style="display: flex; flex-direction: column; align-items: center;">
-              <div class="image-slot filled">
-                <canvas style="max-width: 90px; max-height: 90px; position: relative; z-index: 1;"
-                        data-pdf-url="${img.uri}"
-                        data-preview-pdf="true"></canvas>
-              </div>
-              <div class="slot-label">All</div>
-            </div>
-          `;
-        } else if (isHeic) {
-          slotsHtml = `
-            <div class="variant-item" data-image-filename="${img.filename}" data-image-uri="${img.uri}" data-image-fspath="${img.fsPath || ''}" data-image-scale="All" style="display: flex; flex-direction: column; align-items: center;">
-              <div class="image-slot filled heic-placeholder">
-                <i class="codicon codicon-file-media"></i>
-              </div>
-              <div class="slot-label">All</div>
-            </div>
-          `;
-        } else {
-          slotsHtml = `
-            <div class="variant-item" data-image-filename="${img.filename}" data-image-uri="${img.uri}" data-image-fspath="${img.fsPath || ''}" data-image-scale="All" style="display: flex; flex-direction: column; align-items: center;">
-              <div class="image-slot filled">
-                <img src="${img.uri}" alt="All" />
-              </div>
-              <div class="slot-label">All</div>
-            </div>
-          `;
-        }
+        slotsHtml = imageSlot(images[0], 'All');
       } else {
-        const scaleOrder = ['1x', '2x', '3x'];
-
-        slotsHtml = scaleOrder.map(scale => {
+        slotsHtml = ['1x', '2x', '3x'].map(scale => {
           const img = images.find(i => i.scale === scale);
-          const isPdf = img?.filename?.toLowerCase().endsWith('.pdf');
-          const isHeic = img?.filename?.toLowerCase().endsWith('.heic');
-
-          if (img && img.filename) {
-            if (isPdf) {
-              return `
-                <div class="variant-item" data-image-filename="${img.filename}" data-image-uri="${img.uri}" data-image-fspath="${img.fsPath || ''}" data-image-scale="${scale}" style="display: flex; flex-direction: column; align-items: center;">
-                  <div class="image-slot filled">
-                    <canvas style="max-width: 90px; max-height: 90px; position: relative; z-index: 1;"
-                            data-pdf-url="${img.uri}"
-                            data-preview-pdf="true"></canvas>
-                  </div>
-                  <div class="slot-label">${scale}</div>
-                </div>
-              `;
-            } else if (isHeic) {
-              return `
-                <div class="variant-item" data-image-filename="${img.filename}" data-image-uri="${img.uri}" data-image-fspath="${img.fsPath || ''}" data-image-scale="${scale}" style="display: flex; flex-direction: column; align-items: center;">
-                  <div class="image-slot filled heic-placeholder">
-                    <i class="codicon codicon-file-media"></i>
-                  </div>
-                  <div class="slot-label">${scale}</div>
-                </div>
-              `;
-            } else {
-              return `
-                <div class="variant-item" data-image-filename="${img.filename}" data-image-uri="${img.uri}" data-image-fspath="${img.fsPath || ''}" data-image-scale="${scale}" style="display: flex; flex-direction: column; align-items: center;">
-                  <div class="image-slot filled">
-                    <img src="${img.uri}" alt="${scale}" />
-                  </div>
-                  <div class="slot-label">${scale}</div>
-                </div>
-              `;
-            }
-          } else {
-            return `
-              <div style="display: flex; flex-direction: column; align-items: center;">
-                <div class="image-slot empty">
-                  <span class="plus-icon">+</span>
-                </div>
-                <div class="slot-label">${scale}</div>
-              </div>
-            `;
-          }
+          return img?.filename ? imageSlot(img, scale) : emptySlot(scale);
         }).join('');
       }
 
-      return `
-        <div class="device-group">
-          <div class="slot-grid">${slotsHtml}</div>
-          <div class="device-group-label">${deviceLabels[idiom]}</div>
-        </div>
-      `;
+      return deviceGroup(slotsHtml, DEVICE_LABELS[idiom]);
     }).join('');
 
-  panel.innerHTML = `
-    <div class="preview-container">
-      <div class="preview-title">${escapeHtml(asset.name)}</div>
-      <div class="preview-content" style="flex-direction: column; width: 100%;">
-        ${groupsHtml}
-      </div>
-    </div>
-  `;
+  panel.innerHTML = previewContainer(asset.name, groupsHtml);
 
   // Render PDF previews
-  const pdfCanvases = panel.querySelectorAll('canvas[data-preview-pdf]');
-  for (const canvas of pdfCanvases) {
-    const pdfUrl = canvas.dataset.pdfUrl;
-    await renderPdfToCanvas(pdfUrl, canvas, 1, 90, 90);
+  for (const canvas of panel.querySelectorAll('canvas[data-preview-pdf]')) {
+    await renderPdfToCanvas(canvas.dataset.pdfUrl, canvas, 1, 90, 90);
   }
 
-  // Add click handlers for image slots
-  panel.querySelectorAll('.variant-item[data-image-filename]').forEach(item => {
-    item.addEventListener('click', async (e) => {
-      panel.querySelectorAll('.variant-item[data-image-filename]').forEach(v => {
-        v.classList.remove('selected');
-      });
-      item.classList.add('selected');
-
-      const filename = item.dataset.imageFilename;
-      const uri = item.dataset.imageUri;
-      const scale = item.dataset.imageScale;
-
-      await renderImageVariantProperties(asset, filename, uri, scale, vscode);
-    });
+  // Click handlers
+  setupVariantClicks(panel, '.variant-item[data-image-filename]', 'image', async (data) => {
+    await renderImageVariantProperties(asset, data.imageFilename, data.imageUri, data.imageScale, vscode);
   });
+}
+
+// Color slot helper
+function colorSlot(colorItem, label) {
+  const colorValue = getColorValue(colorItem.color);
+  return `
+    <div class="variant-item" data-color-index="${colorItem._idx}" style="display: flex; flex-direction: column; align-items: center;">
+      <div class="color-slot filled" style="background-color: ${colorValue};"></div>
+      <div class="slot-label">${label}</div>
+    </div>`;
+}
+
+// Find color by appearance
+function findColorByAppearance(colors, key) {
+  if (key === 'any') return colors.find(c => !c.appearances || c.appearances.length === 0);
+  return colors.find(c => c.appearances?.some(a => a.appearance === 'luminosity' && a.value === key));
 }
 
 function renderColorPreview(asset, panel, vscode) {
-  const idiomGroups = {};
-  asset.colors.forEach((colorItem, idx) => {
-    const idiom = colorItem.idiom || 'universal';
-    if (!idiomGroups[idiom]) {
-      idiomGroups[idiom] = [];
-    }
-    idiomGroups[idiom].push({ ...colorItem, colorIndex: idx });
-  });
-
-  const idiomTitles = {
-    'universal': 'Universal',
-    'iphone': 'iPhone',
-    'ipad': 'iPad',
-    'mac': 'Mac',
-    'tv': 'Apple TV',
-    'watch': 'Apple Watch',
-    'car': 'CarPlay',
-    'vision': 'Apple Vision',
-    'Mac Catalyst Scaled': 'Mac Catalyst Scaled'
-  };
+  const idiomGroups = groupBy(asset.colors, c => c.idiom || 'universal');
 
   const idiomHtml = Object.keys(idiomGroups).map(idiom => {
     const colors = idiomGroups[idiom];
-
-    // Check which appearances exist
     const hasLight = colors.some(c => c.appearances?.some(a => a.appearance === 'luminosity' && a.value === 'light'));
     const hasDark = colors.some(c => c.appearances?.some(a => a.appearance === 'luminosity' && a.value === 'dark'));
 
-    // Build appearance slots: Any, Light (if exists), Dark (if exists)
-    const appearances = [
-      { key: 'any', label: 'Any Appearance' }
-    ];
-    if (hasLight) {
-      appearances.push({ key: 'light', label: 'Light' });
-    }
-    if (hasDark) {
-      appearances.push({ key: 'dark', label: 'Dark' });
-    }
+    const appearances = [{ key: 'any', label: 'Any Appearance' }];
+    if (hasLight) appearances.push({ key: 'light', label: 'Light' });
+    if (hasDark) appearances.push({ key: 'dark', label: 'Dark' });
 
     const slotsHtml = appearances.map(({ key, label }) => {
-      let colorItem;
-      if (key === 'any') {
-        colorItem = colors.find(c => !c.appearances || c.appearances.length === 0);
-      } else if (key === 'light') {
-        colorItem = colors.find(c => c.appearances?.some(a => a.appearance === 'luminosity' && a.value === 'light'));
-      } else if (key === 'dark') {
-        colorItem = colors.find(c => c.appearances?.some(a => a.appearance === 'luminosity' && a.value === 'dark'));
-      }
-
-      const hasValidColor = colorItem?.color && colorItem.color.components;
-      const colorValue = hasValidColor ? getColorValue(colorItem.color) : '';
-
-      if (hasValidColor) {
-        return `
-          <div class="variant-item" data-color-index="${colorItem.colorIndex}" style="display: flex; flex-direction: column; align-items: center;">
-            <div class="color-slot filled" style="background-color: ${colorValue};"></div>
-            <div class="slot-label">${label}</div>
-          </div>
-        `;
-      } else {
-        return `
-          <div style="display: flex; flex-direction: column; align-items: center;">
-            <div class="color-slot empty">
-              <span class="plus-icon">+</span>
-            </div>
-            <div class="slot-label">${label}</div>
-          </div>
-        `;
-      }
+      const colorItem = findColorByAppearance(colors, key);
+      const valid = colorItem?.color?.components;
+      return valid ? colorSlot(colorItem, label) : emptySlot(label, 'color');
     }).join('');
 
-    const idiomTitle = idiomTitles[idiom] || idiom;
-    return `
-      <div class="device-group">
-        <div class="slot-grid">${slotsHtml}</div>
-        <div class="device-group-label">${idiomTitle}</div>
-      </div>
-    `;
+    return deviceGroup(slotsHtml, DEVICE_LABELS[idiom] || idiom);
   }).join('');
 
-  panel.innerHTML = `
-    <div class="preview-container">
-      <div class="preview-title">${escapeHtml(asset.name)}</div>
-      <div class="preview-content" style="flex-direction: column; width: 100%;">
-        ${idiomHtml}
-      </div>
-    </div>
-  `;
+  panel.innerHTML = previewContainer(asset.name, idiomHtml);
 
-  // Add click handlers for color variants
-  panel.querySelectorAll('.variant-item[data-color-index]').forEach(item => {
-    item.addEventListener('click', (e) => {
-      panel.querySelectorAll('.variant-item[data-color-index]').forEach(v => {
-        v.classList.remove('selected');
-      });
-      item.classList.add('selected');
-
-      const colorIndex = parseInt(item.dataset.colorIndex);
-      renderColorProperties(asset, colorIndex, vscode);
-    });
+  setupVariantClicks(panel, '.variant-item[data-color-index]', 'color', (data) => {
+    renderColorProperties(asset, parseInt(data.colorIndex), vscode);
   });
 }
 
+// Icon slot helper
+function iconSlot(icon, label, size) {
+  const data = `data-icon-filename="${icon.filename}" data-icon-uri="${icon.uri}" data-icon-fspath="${icon.fsPath || ''}" data-icon-size="${size}" data-icon-scale="${icon.scale || ''}" data-icon-appearance="${label}"`;
+  return `
+    <div class="variant-item" ${data} style="display: flex; flex-direction: column; align-items: center;">
+      <div class="image-slot filled">
+        <img src="${icon.uri}" alt="${label}" style="max-width: 90px; max-height: 90px;" />
+      </div>
+      <div class="slot-label">${label}</div>
+    </div>`;
+}
+
+// Get icon variants (macOS: by scale, iOS: by appearance)
+function getIconVariants(sizeIcons) {
+  const hasScale = sizeIcons.some(i => i.scale);
+  if (hasScale) {
+    return ['1x', '2x', '3x']
+      .map(scale => ({ icon: sizeIcons.find(i => i.scale === scale), label: scale }))
+      .filter(v => v.icon);
+  }
+  const variants = [{ icon: sizeIcons.find(i => !i.appearances?.length), label: 'Any' }];
+  const dark = sizeIcons.find(i => i.appearances?.some(a => a.value === 'dark'));
+  const tinted = sizeIcons.find(i => i.appearances?.some(a => a.value === 'tinted'));
+  if (dark) variants.push({ icon: dark, label: 'Dark' });
+  if (tinted) variants.push({ icon: tinted, label: 'Tinted' });
+  return variants;
+}
+
 function renderAppIconPreview(asset, panel, vscode) {
-  const platformGroups = {};
-
-  asset.icons.forEach(icon => {
-    // Group by platform if available, otherwise fallback to idiom
-    const key = icon.platform || icon.idiom || 'other';
-    if (!platformGroups[key]) {
-      platformGroups[key] = [];
-    }
-    platformGroups[key].push(icon);
-  });
-
   const platformOrder = ['ios', 'macos', 'watchos', 'tvos', 'universal', 'iphone', 'ipad', 'mac', 'watch', 'tv', 'car'];
-  
-  // Add any missing keys to the end
-  Object.keys(platformGroups).forEach(key => {
-    if (!platformOrder.includes(key)) {
-      platformOrder.push(key);
-    }
-  });
+  const platformGroups = groupBy(asset.icons, i => i.platform || i.idiom || 'other');
 
-  const platformLabels = {
-    'ios': 'iOS',
-    'macos': 'macOS',
-    'watchos': 'watchOS',
-    'tvos': 'tvOS',
-    'universal': 'Universal',
-    'iphone': 'iPhone',
-    'ipad': 'iPad',
-    'mac': 'Mac',
-    'watch': 'Apple Watch',
-    'tv': 'Apple TV',
-    'car': 'CarPlay'
-  };
+  // Add unknown platforms
+  Object.keys(platformGroups).forEach(k => {
+    if (!platformOrder.includes(k)) platformOrder.push(k);
+  });
 
   const contentHtml = platformOrder
     .filter(key => platformGroups[key])
     .map(key => {
-      const icons = platformGroups[key];
-      const sizeGroups = {};
-
-      icons.forEach(icon => {
-        const sizeKey = icon.size || 'unknown';
-        if (!sizeGroups[sizeKey]) {
-          sizeGroups[sizeKey] = [];
-        }
-        sizeGroups[sizeKey].push(icon);
-      });
+      const sizeGroups = groupBy(platformGroups[key], i => i.size || 'unknown');
 
       const iconSlotsHtml = Object.keys(sizeGroups).map(size => {
-        const sizeIcons = sizeGroups[size];
+        const variants = getIconVariants(sizeGroups[size]);
+        const variantsHtml = variants.map(({ icon, label }) =>
+          icon?.filename ? iconSlot(icon, label, size) : emptySlot(label)
+        ).join('');
 
-        // Check if icons have scale (macOS style) or appearances (iOS style)
-        const hasScale = sizeIcons.some(i => i.scale);
+        const displaySize = `${size.split('x')[0]}pt`;
+        const labelHtml = `
+          <div class="device-group-label" style="border-top: 1px solid var(--vscode-panel-border) !important; padding-top: 5px; margin-top: 5px; line-height: 1.4;">
+            <div style="font-weight: 600; color: var(--vscode-foreground);">${DEVICE_LABELS[key] || key}</div>
+            <div style="font-weight: normal;">${displaySize}</div>
+          </div>`;
 
-        let variants = [];
-
-        if (hasScale) {
-          // macOS style: group by scale
-          const scaleOrder = ['1x', '2x', '3x'];
-          scaleOrder.forEach(scale => {
-            const icon = sizeIcons.find(i => i.scale === scale);
-            if (icon) {
-              variants.push({ icon, label: scale });
-            }
-          });
-        } else {
-          // iOS style: group by appearances
-          const defaultIcon = sizeIcons.find(i => !i.appearances || i.appearances.length === 0);
-          const darkIcon = sizeIcons.find(i => i.appearances?.some(a => a.value === 'dark'));
-          const tintedIcon = sizeIcons.find(i => i.appearances?.some(a => a.value === 'tinted'));
-
-          variants.push({ icon: defaultIcon, label: 'Any' });
-
-          if (darkIcon) {
-            variants.push({ icon: darkIcon, label: 'Dark' });
-          }
-          if (tintedIcon) {
-            variants.push({ icon: tintedIcon, label: 'Tinted' });
-          }
-        }
-
-        const variantsHtml = variants.map(({ icon, label }) => {
-          if (icon && icon.filename) {
-            return `
-              <div class="variant-item" data-icon-filename="${icon.filename}" data-icon-uri="${icon.uri}" data-icon-fspath="${icon.fsPath || ''}" data-icon-size="${size}" data-icon-scale="${icon.scale || ''}" data-icon-appearance="${label}" style="display: flex; flex-direction: column; align-items: center;">
-                <div class="image-slot filled">
-                  <img src="${icon.uri}" alt="${label}" style="max-width: 90px; max-height: 90px;" />
-                </div>
-                <div class="slot-label">${label}</div>
-              </div>
-            `;
-          } else {
-            return `
-              <div style="display: flex; flex-direction: column; align-items: center;">
-                <div class="image-slot empty">
-                  <span class="plus-icon">+</span>
-                </div>
-                <div class="slot-label">${label}</div>
-              </div>
-            `;
-          }
-        }).join('');
-
-        let displaySize = size;
-        const sizeParts = size.split('x');
-        if (sizeParts.length >= 1) {
-          displaySize = `${sizeParts[0]}pt`;
-        }
-        const platformLabel = platformLabels[key] || key;
-
-        return `
-          <div class="device-group" style="margin-bottom: 20px;">
-            <div class="slot-grid">${variantsHtml}</div>
-            <div class="device-group-label" style="border-top: 1px solid var(--vscode-panel-border) !important; padding-top: 5px; margin-top: 5px; line-height: 1.4;">
-              <div style="font-weight: 600; color: var(--vscode-foreground);">${platformLabel}</div>
-              <div style="font-weight: normal;">${displaySize}</div>
-            </div>
-          </div>
-        `;
+        return `<div class="device-group" style="margin-bottom: 20px;"><div class="slot-grid">${variantsHtml}</div>${labelHtml}</div>`;
       }).join('');
 
-      return `
-        <div class="platform-group" style="width: 100%; margin-bottom: 30px;">
-          ${iconSlotsHtml}
-        </div>
-      `;
+      return `<div class="platform-group" style="width: 100%; margin-bottom: 30px;">${iconSlotsHtml}</div>`;
     }).join('');
 
-  panel.innerHTML = `
-    <div class="preview-container">
-      <div class="preview-title">${escapeHtml(asset.name)}</div>
-      <div class="preview-content" style="flex-direction: column; width: 100%;">
-        ${contentHtml}
-      </div>
-    </div>
-  `;
+  panel.innerHTML = previewContainer(asset.name, contentHtml);
 
-  // Add click handlers for icon slots
-  panel.querySelectorAll('.variant-item[data-icon-filename]').forEach(item => {
-    item.addEventListener('click', async (e) => {
-      panel.querySelectorAll('.variant-item[data-icon-filename]').forEach(v => {
-        v.classList.remove('selected');
-      });
-      item.classList.add('selected');
-
-      const filename = item.dataset.iconFilename;
-      const uri = item.dataset.iconUri;
-      const size = item.dataset.iconSize;
-      const scale = item.dataset.iconScale;
-      const appearance = item.dataset.iconAppearance;
-
-      await renderAppIconVariantProperties(asset, filename, uri, size, scale, appearance, vscode);
-    });
+  setupVariantClicks(panel, '.variant-item[data-icon-filename]', 'icon', async (data) => {
+    await renderAppIconVariantProperties(asset, data.iconFilename, data.iconUri, data.iconSize, data.iconScale, data.iconAppearance, vscode);
   });
 }
 
-function renderDataPreview(asset, panel) {
-  const dataItem = asset.data.length > 0 ? asset.data[0] : null;
+// Lottie controls HTML
+function lottieControls() {
+  return `
+    <div class="lottie-controls">
+      <button class="lottie-btn" id="lottiePlayBtn" title="Play/Pause"><i class="codicon codicon-debug-pause"></i></button>
+      <div class="lottie-progress-group">
+        <span class="lottie-time" id="lottieCurrentTime">0:00</span>
+        <input type="range" class="lottie-progress" id="lottieProgress" min="0" max="100" value="0" />
+        <span class="lottie-time" id="lottieDuration">0:00</span>
+      </div>
+      <select class="lottie-speed-select" id="lottieSpeed" title="Playback Speed">
+        <option value="0.5">0.5x</option><option value="1" selected>1x</option>
+        <option value="1.5">1.5x</option><option value="2">2x</option><option value="2.5">2.5x</option>
+      </select>
+      <button class="lottie-btn active" id="lottieLoopBtn" title="Loop"><i class="codicon codicon-sync"></i></button>
+    </div>`;
+}
 
-  if (dataItem && dataItem.isLottie && dataItem.content) {
-    // JSON Lottie
-    panel.innerHTML = `
-      <div class="preview-container">
-        <div class="preview-title">${escapeHtml(asset.name)}</div>
-        <div class="preview-content" style="width: 100%; justify-content: center;">
-          <div class="lottie-player-container">
-            <div id="lottieAnimation" class="lottie-animation"></div>
-            <div class="lottie-controls">
-              <button class="lottie-btn" id="lottiePlayBtn" title="Play/Pause">
-                <i class="codicon codicon-debug-pause"></i>
-              </button>
-              <div class="lottie-progress-group">
-                <span class="lottie-time" id="lottieCurrentTime">0:00</span>
-                <input type="range" class="lottie-progress" id="lottieProgress" min="0" max="100" value="0" />
-                <span class="lottie-time" id="lottieDuration">0:00</span>
-              </div>
-              <select class="lottie-speed-select" id="lottieSpeed" title="Playback Speed">
-                <option value="0.5">0.5x</option>
-                <option value="1" selected>1x</option>
-                <option value="1.5">1.5x</option>
-                <option value="2">2x</option>
-                <option value="2.5">2.5x</option>
-              </select>
-              <button class="lottie-btn active" id="lottieLoopBtn" title="Loop">
-                <i class="codicon codicon-sync"></i>
-              </button>
-            </div>
-          </div>
-        </div>
+// Lottie player wrapper
+function lottiePlayer(name, playerHtml) {
+  return `
+    <div class="preview-container">
+      <div class="preview-title">${escapeHtml(name)}</div>
+      <div class="preview-content" style="width: 100%; justify-content: center;">
+        <div class="lottie-player-container">${playerHtml}${lottieControls()}</div>
       </div>
-    `;
+    </div>`;
+}
+
+function renderDataPreview(asset, panel) {
+  const dataItem = asset.data[0];
+
+  if (dataItem?.isLottie && dataItem.content) {
+    panel.innerHTML = lottiePlayer(asset.name, '<div id="lottieAnimation" class="lottie-animation"></div>');
     initLottiePlayer(dataItem.content);
-  } else if (dataItem && dataItem.isLottie && dataItem.uri) {
-    // Binary .lottie file
-    panel.innerHTML = `
-      <div class="preview-container">
-        <div class="preview-title">${escapeHtml(asset.name)}</div>
-        <div class="preview-content" style="width: 100%; justify-content: center;">
-          <div class="lottie-player-container">
-            <dotlottie-player
-              id="dotLottiePlayer"
-              src="${dataItem.uri}"
-              autoplay
-              loop
-              class="lottie-animation">
-            </dotlottie-player>
-            <div class="lottie-controls">
-              <button class="lottie-btn" id="lottiePlayBtn" title="Play/Pause">
-                <i class="codicon codicon-debug-pause"></i>
-              </button>
-              <div class="lottie-progress-group">
-                <span class="lottie-time" id="lottieCurrentTime">0:00</span>
-                <input type="range" class="lottie-progress" id="lottieProgress" min="0" max="100" value="0" />
-                <span class="lottie-time" id="lottieDuration">0:00</span>
-              </div>
-              <select class="lottie-speed-select" id="lottieSpeed" title="Playback Speed">
-                <option value="0.5">0.5x</option>
-                <option value="1" selected>1x</option>
-                <option value="1.5">1.5x</option>
-                <option value="2">2x</option>
-                <option value="2.5">2.5x</option>
-              </select>
-              <button class="lottie-btn active" id="lottieLoopBtn" title="Loop">
-                <i class="codicon codicon-sync"></i>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
+  } else if (dataItem?.isLottie && dataItem.uri) {
+    panel.innerHTML = lottiePlayer(asset.name, `<dotlottie-player id="dotLottiePlayer" src="${dataItem.uri}" autoplay loop class="lottie-animation"></dotlottie-player>`);
     initDotLottiePlayer();
   } else {
-    // Show file content
-    let contentHtml = '';
-    if (dataItem) {
-      if (dataItem.content) {
-        const escapedContent = dataItem.content
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;');
-
-        contentHtml = `
-          <div style="width: 100%; max-width: 800px;">
-            <div style="margin-bottom: 12px; font-size: 13px; color: var(--vscode-descriptionForeground);">
-              File: ${escapeHtml(dataItem.filename)}
-            </div>
-            <pre style="
-              background-color: var(--vscode-textCodeBlock-background);
-              border: 1px solid var(--vscode-panel-border);
-              border-radius: 4px;
-              padding: 16px;
-              overflow: auto;
-              max-height: 600px;
-              font-family: var(--vscode-editor-font-family);
-              font-size: 13px;
-              line-height: 1.5;
-              text-align: left;
-            ">${escapedContent}</pre>
-          </div>
-        `;
-      } else if (dataItem.filename) {
-        contentHtml = `
-          <div style="color: var(--vscode-descriptionForeground);">
-            File: ${escapeHtml(dataItem.filename)}<br>
-            <em>(Binary or unreadable content)</em>
-          </div>
-        `;
-      } else {
-        contentHtml = `<div class="preview-label">${asset.data.length} data items</div>`;
-      }
+    let contentHtml;
+    if (dataItem?.content) {
+      const escaped = dataItem.content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      contentHtml = `
+        <div style="width: 100%; max-width: 800px;">
+          <div style="margin-bottom: 12px; font-size: 13px; color: var(--vscode-descriptionForeground);">File: ${escapeHtml(dataItem.filename)}</div>
+          <pre style="background-color: var(--vscode-textCodeBlock-background); border: 1px solid var(--vscode-panel-border); border-radius: 4px; padding: 16px; overflow: auto; max-height: 600px; font-family: var(--vscode-editor-font-family); font-size: 13px; line-height: 1.5; text-align: left;">${escaped}</pre>
+        </div>`;
+    } else if (dataItem?.filename) {
+      contentHtml = `<div style="color: var(--vscode-descriptionForeground);">File: ${escapeHtml(dataItem.filename)}<br><em>(Binary or unreadable content)</em></div>`;
     } else {
-      contentHtml = `<div class="preview-label">No data items</div>`;
+      contentHtml = `<div class="preview-label">${dataItem ? asset.data.length + ' data items' : 'No data items'}</div>`;
     }
-
     panel.innerHTML = `
       <div class="preview-container">
         <div class="preview-title">${escapeHtml(asset.name)}</div>
-        <div class="preview-content" style="width: 100%;">
-          ${contentHtml}
-        </div>
-      </div>
-    `;
+        <div class="preview-content" style="width: 100%;">${contentHtml}</div>
+      </div>`;
   }
 }
