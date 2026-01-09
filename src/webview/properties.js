@@ -239,7 +239,8 @@ export async function renderImageVariantProperties(asset, filename, uri, scale, 
     ? '<div style="padding: 2px 0; margin-bottom: 4px;">☑ Universal</div>'
     : '';
 
-  const scales = [...new Set(asset.images.map(i => i.scale))].join(', ');
+  const uniqueScales = [...new Set(asset.images.map(i => i.scale))];
+  const scalesText = uniqueScales.length <= 1 ? 'Single Scale' : 'Individual Scales';
 
   panel.innerHTML = `
     <div class="property-section">
@@ -261,7 +262,7 @@ export async function renderImageVariantProperties(asset, filename, uri, scale, 
     </div>
     <div class="property-section">
       <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">Scales</div>
-      <div class="property-value">${scales}</div>
+      <div class="property-value">${scalesText}</div>
     </div>
     <div class="property-section" style="border-top: 1px solid var(--vscode-panel-border); padding-top: 16px; margin-top: 16px;">
       <div class="property-title">Image</div>
@@ -313,7 +314,8 @@ export function renderProperties(asset, vscode) {
       ? '<div style="padding: 2px 0; margin-bottom: 4px;">☑ Universal</div>'
       : '';
 
-    const scales = [...new Set(asset.images.map(i => i.scale))].join(', ');
+    const uniqueScales = [...new Set(asset.images.map(i => i.scale))];
+    const scalesText = uniqueScales.length <= 1 ? 'Single Scale' : 'Individual Scales';
 
     panel.innerHTML = `
       <div class="property-section">
@@ -335,7 +337,7 @@ export function renderProperties(asset, vscode) {
       </div>
       <div class="property-section">
         <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">Scales</div>
-        <div class="property-value">${scales}</div>
+        <div class="property-value">${scalesText}</div>
       </div>
     `;
 
