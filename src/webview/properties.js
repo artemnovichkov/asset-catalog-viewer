@@ -275,8 +275,6 @@ export async function renderImageVariantProperties(asset, filename, uri, scale, 
       <div class="property-title">Image</div>
       <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px; margin-top: 12px;">File Name</div>
       <div class="property-value">${escapeHtml(filename)}</div>
-      <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px; margin-top: 12px;">Compression</div>
-      <div class="property-value">Inherited (Automatic)</div>
       <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px; margin-top: 12px;">Image Size</div>
       <div class="property-value">${imageSizeText}</div>
       <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px; margin-top: 12px;">Color Space</div>
