@@ -242,6 +242,9 @@ export async function renderImageVariantProperties(asset, filename, uri, scale, 
   const uniqueScales = [...new Set(asset.images.map(i => i.scale))];
   const scalesText = uniqueScales.length <= 1 ? 'Single Scale' : 'Individual Scales';
 
+  const renderAsText = asset.templateRenderingIntent === 'template' ? 'Template Image' :
+    asset.templateRenderingIntent === 'original' ? 'Original Image' : 'Default';
+
   panel.innerHTML = `
     <div class="property-section">
       <div class="property-title">Image Set</div>
@@ -263,6 +266,10 @@ export async function renderImageVariantProperties(asset, filename, uri, scale, 
     <div class="property-section">
       <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">Scales</div>
       <div class="property-value">${scalesText}</div>
+    </div>
+    <div class="property-section">
+      <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">Render As</div>
+      <div class="property-value">${renderAsText}</div>
     </div>
     <div class="property-section" style="border-top: 1px solid var(--vscode-panel-border); padding-top: 16px; margin-top: 16px;">
       <div class="property-title">Image</div>
@@ -317,6 +324,9 @@ export function renderProperties(asset, vscode) {
     const uniqueScales = [...new Set(asset.images.map(i => i.scale))];
     const scalesText = uniqueScales.length <= 1 ? 'Single Scale' : 'Individual Scales';
 
+    const renderAsText = asset.templateRenderingIntent === 'template' ? 'Template Image' :
+      asset.templateRenderingIntent === 'original' ? 'Original Image' : 'Default';
+
     panel.innerHTML = `
       <div class="property-section">
         <div class="property-title">Image Set</div>
@@ -338,6 +348,10 @@ export function renderProperties(asset, vscode) {
       <div class="property-section">
         <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">Scales</div>
         <div class="property-value">${scalesText}</div>
+      </div>
+      <div class="property-section">
+        <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 8px;">Render As</div>
+        <div class="property-value">${renderAsText}</div>
       </div>
     `;
 

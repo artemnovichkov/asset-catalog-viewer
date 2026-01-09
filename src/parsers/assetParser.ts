@@ -148,6 +148,7 @@ export class AssetParser {
     return {
       name: path.basename(imageSetPath, '.imageset'),
       images,
+      templateRenderingIntent: contents.properties?.['template-rendering-intent'],
     };
   }
 

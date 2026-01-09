@@ -6,6 +6,9 @@ export interface ImageContents {
     idiom?: string;
     subtype?: string;
   }>;
+  properties?: {
+    'template-rendering-intent'?: string;
+  };
 }
 
 export interface ColorContents {
@@ -105,7 +108,7 @@ export interface ConvertedAppIconVariant {
 
 export type ConvertedAssetItem =
   | { type: 'folder'; name: string; path: string; children: ConvertedAssetItem[] }
-  | { type: 'image'; name: string; path: string; images: ConvertedImageVariant[] }
+  | { type: 'image'; name: string; path: string; images: ConvertedImageVariant[]; templateRenderingIntent?: string }
   | { type: 'color'; name: string; path: string; colors: ColorDefinition[] }
   | { type: 'data'; name: string; path: string; data: ConvertedDataItem[] }
   | { type: 'appicon'; name: string; path: string; icons: ConvertedAppIconVariant[] };
@@ -129,6 +132,7 @@ export interface AssetItem {
 export interface ImageSet {
   name: string;
   images: ImageVariant[];
+  templateRenderingIntent?: string;
 }
 
 export interface ImageVariant {
