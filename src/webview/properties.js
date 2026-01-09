@@ -1,66 +1,155 @@
-import { escapeHtml, getColorValue } from './utils.js';
+import { escapeHtml } from './utils.js';
+
+// Constants
+const ALL_DEVICES = [
+  { id: 'iphone', label: 'iPhone' },
+  { id: 'ipad', label: 'iPad' },
+  { id: 'mac-catalyst', label: 'Mac Catalyst Scaled', indent: true },
+  { id: 'car', label: 'CarPlay' },
+  { id: 'vision', label: 'Apple Vision' },
+  { id: 'watch', label: 'Apple Watch' },
+  { id: 'tv', label: 'Apple TV' }
+];
+
+// Helper: collect idioms from items array
+function collectIdioms(items, subtypeKey = 'subtype', idiomKey = 'idiom') {
+  const idioms = new Set();
+  items.forEach(item => {
+    if (item[subtypeKey] === 'mac-catalyst') {
+      idioms.add('mac-catalyst');
+    } else {
+      idioms.add(item[idiomKey] || 'universal');
+    }
+  });
+  return idioms;
+}
+
+// Helper: generate devices HTML with checkboxes
+function renderDevicesHtml(idioms) {
+  const universalHtml = idioms.has('universal')
+    ? '<div style="padding: 2px 0; margin-bottom: 4px;">☑ Universal</div>'
+    : '';
+
+  const devicesHtml = ALL_DEVICES.map(device => {
+    const checked = idioms.has(device.id) ? '☑' : '☐';
+    const indent = device.indent ? 'padding-left: 16px;' : '';
+    return `<div style="padding: 2px 0; ${indent}">${checked} ${device.label}</div>`;
+  }).join('');
+
+  return universalHtml + devicesHtml;
+}
+
+// Helper: get appearances text from color items
+function getAppearancesText(colorItems) {
+  const hasLuminosity = new Set();
+  const hasContrast = new Set();
+
+  colorItems.forEach(item => {
+    (item.appearances || []).forEach(app => {
+      if (app.appearance === 'luminosity') hasLuminosity.add(app.value);
+      else if (app.appearance === 'contrast') hasContrast.add(app.value);
+    });
+  });
+
+  if (!hasLuminosity.has('light') && !hasLuminosity.has('dark') && !hasContrast.has('high')) {
+    return 'None';
+  }
+
+  const parts = ['Any'];
+  if (hasLuminosity.has('light')) parts.push('Light');
+  if (hasLuminosity.has('dark')) parts.push('Dark');
+  let text = parts.join(', ');
+  if (hasContrast.has('high')) text += ' + High Contrast';
+  return text;
+}
+
+// Helper: get gamut from color items
+function getGamut(colorItems) {
+  for (const item of colorItems) {
+    if (item.color?.['color-space']) {
+      return item.color['color-space'].toUpperCase();
+    }
+  }
+  return 'Any';
+}
+
+// Helper: load image dimensions
+async function loadImageDimensions(uri) {
+  try {
+    const img = new Image();
+    await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = reject;
+      img.src = uri;
+    });
+    return { width: img.naturalWidth, height: img.naturalHeight };
+  } catch {
+    return { width: 0, height: 0 };
+  }
+}
+
+// Helper: format image size text
+function formatImageSize(width, height) {
+  return width && height ? `${width} × ${height} pixels` : 'Unknown';
+}
+
+// Helper: property row HTML
+function row(label, value, opts = {}) {
+  const style = opts.alignTop ? ' style="align-items: flex-start;"' : '';
+  const valueStyle = opts.flex ? ' style="flex: 1;"' : '';
+  return `
+    <div class="property-row"${style}>
+      <span class="property-row-label">${label}</span>
+      <div class="property-row-value"${valueStyle}>${value}</div>
+    </div>`;
+}
+
+// Helper: name row with finder button
+function nameRow(name, path) {
+  return `
+    <div class="property-row">
+      <span class="property-row-label">Name</span>
+      <div class="property-row-value" style="flex: 1;">${escapeHtml(name)}</div>
+      <button class="finder-button" data-path="${path}">
+        <i class="codicon codicon-folder-opened"></i>
+      </button>
+    </div>`;
+}
+
+// Helper: property section HTML
+function section(title, content, opts = {}) {
+  const style = opts.border
+    ? ' style="border-top: 1px solid var(--vscode-panel-border); padding-top: 16px; margin-top: 16px;"'
+    : '';
+  return `
+    <div class="property-section"${style}>
+      <div class="property-title">${title}</div>
+      ${content}
+    </div>`;
+}
+
+// Helper: add finder button handler
+function addFinderButtonHandler(panel, vscode) {
+  const btn = panel.querySelector('.finder-button');
+  if (btn) {
+    btn.addEventListener('click', (e) => {
+      const path = e.currentTarget.dataset.path;
+      if (path) vscode.postMessage({ command: 'showInFinder', filePath: path });
+    });
+  }
+}
+
+// Helper: render to panel
+function render(panel, html, vscode) {
+  panel.innerHTML = html;
+  addFinderButtonHandler(panel, vscode);
+}
 
 // Render color properties for specific variant
 export function renderColorProperties(asset, colorIndex, vscode) {
   const panel = document.getElementById('propertiesPanel');
   const colorItem = asset.colors[colorIndex];
-
-  const idioms = new Set();
-  const hasLuminosity = new Set();
-  const hasContrast = new Set();
-  let gamut = 'Any';
-
-  asset.colors.forEach(item => {
-    if (item.subtype === 'mac-catalyst') {
-      idioms.add('mac-catalyst');
-    } else {
-      idioms.add(item.idiom || 'universal');
-    }
-
-    if (item.color?.['color-space']) {
-      gamut = item.color['color-space'].toUpperCase();
-    }
-
-    const appearances = item.appearances || [];
-    appearances.forEach(app => {
-      if (app.appearance === 'luminosity') {
-        hasLuminosity.add(app.value);
-      } else if (app.appearance === 'contrast') {
-        hasContrast.add(app.value);
-      }
-    });
-  });
-
-  const allDevices = [
-    { id: 'iphone', label: 'iPhone' },
-    { id: 'ipad', label: 'iPad' },
-    { id: 'mac-catalyst', label: 'Mac Catalyst Scaled' },
-    { id: 'car', label: 'CarPlay' },
-    { id: 'vision', label: 'Apple Vision' },
-    { id: 'watch', label: 'Apple Watch' },
-    { id: 'tv', label: 'Apple TV' }
-  ];
-
-  const devicesHtml = allDevices.map(device => {
-    const checked = idioms.has(device.id) ? '☑' : '☐';
-    const indent = device.id === 'mac-catalyst' ? 'padding-left: 16px;' : '';
-    return `<div style="padding: 2px 0; ${indent}">${checked} ${device.label}</div>`;
-  }).join('');
-
-  let appearancesText = 'None';
-  if (hasLuminosity.has('light') || hasLuminosity.has('dark') || hasContrast.has('high')) {
-    const parts = ['Any'];
-    if (hasLuminosity.has('light')) parts.push('Light');
-    if (hasLuminosity.has('dark')) parts.push('Dark');
-    appearancesText = parts.join(', ');
-    if (hasContrast.has('high')) {
-      appearancesText += ' + High Contrast';
-    }
-  }
-
-  const universalHtml = idioms.has('universal')
-    ? '<div style="padding: 2px 0; margin-bottom: 4px;">☑ Universal</div>'
-    : '';
+  const idioms = collectIdioms(asset.colors);
 
   const color = colorItem.color || {};
   const colorSpace = color['color-space'] || 'srgb';
@@ -72,324 +161,117 @@ export function renderColorProperties(asset, colorIndex, vscode) {
     const g = parseFloat(components.green);
     const b = parseFloat(components.blue);
     const a = components.alpha !== undefined ? parseFloat(components.alpha) : 1;
-    componentsHtml = `<div class="property-row-value">R: ${r}, G: ${g}, B: ${b}, A: ${a}</div>`;
+    componentsHtml = row('Components', `R: ${r}, G: ${g}, B: ${b}, A: ${a}`);
   }
 
-  panel.innerHTML = `
-    <div class="property-section">
-      <div class="property-title">Color Set</div>
-      <div class="property-row">
-        <span class="property-row-label">Name</span>
-        <div class="property-row-value" style="flex: 1;">${escapeHtml(asset.name)}</div>
-        <button class="finder-button" data-path="${asset.path}">
-          <i class="codicon codicon-folder-opened"></i>
-        </button>
-      </div>
+  const html = `
+    ${section('Color Set', `
+      ${nameRow(asset.name, asset.path)}
       <div class="property-row" style="align-items: flex-start;">
         <span class="property-row-label">Devices</span>
-        <div style="font-size: 12px; line-height: 1.5;">
-          ${universalHtml}
-          ${devicesHtml}
-        </div>
+        <div style="font-size: 12px; line-height: 1.5;">${renderDevicesHtml(idioms)}</div>
       </div>
-      <div class="property-row">
-        <span class="property-row-label">Appearances</span>
-        <div class="property-row-value">${appearancesText}</div>
-      </div>
-      <div class="property-row">
-        <span class="property-row-label">Gamut</span>
-        <div class="property-row-value">${gamut}</div>
-      </div>
-    </div>
-    <div class="property-section">
-      <div class="property-title">Color</div>
-      <div class="property-row">
-        <span class="property-row-label">Color Space</span>
-        <div class="property-row-value">${colorSpace}</div>
-      </div>
-      ${componentsHtml ? `<div class="property-row">
-        <span class="property-row-label">Components</span>
-        ${componentsHtml}
-      </div>` : ''}
-    </div>
+      ${row('Appearances', getAppearancesText(asset.colors))}
+      ${row('Gamut', getGamut(asset.colors))}
+    `)}
+    ${section('Color', `
+      ${row('Color Space', colorSpace)}
+      ${componentsHtml}
+    `, { border: true })}
   `;
 
-  addFinderButtonHandler(panel, vscode);
+  render(panel, html, vscode);
 }
 
 // Render app icon variant properties
 export async function renderAppIconVariantProperties(asset, filename, uri, size, scale, appearance, vscode) {
   const panel = document.getElementById('propertiesPanel');
+  const { width, height } = await loadImageDimensions(uri);
 
-  let imageWidth = 0;
-  let imageHeight = 0;
-  try {
-    const img = new Image();
-    await new Promise((resolve, reject) => {
-      img.onload = () => {
-        imageWidth = img.naturalWidth;
-        imageHeight = img.naturalHeight;
-        resolve();
-      };
-      img.onerror = reject;
-      img.src = uri;
-    });
-  } catch (e) {
-    console.error('Failed to load image:', e);
-  }
+  const platforms = [...new Set(asset.icons.map(i => i.platform).filter(Boolean))];
+  const platformsList = platforms.join(', ') || 'iOS';
 
-  const imageSizeText = imageWidth && imageHeight
-    ? `${imageWidth} × ${imageHeight} pixels`
-    : 'Unknown';
-
-  const platforms = new Set();
-  asset.icons.forEach(icon => {
-    if (icon.platform) {
-      platforms.add(icon.platform);
-    }
-  });
-
-  const platformsList = Array.from(platforms).join(', ');
-
-  // Show Scale for macOS icons, Appearance for iOS icons
   const scaleOrAppearanceHtml = scale
-    ? `<div class="property-row">
-        <span class="property-row-label">Scale</span>
-        <div class="property-row-value">${scale}</div>
-      </div>`
-    : `<div class="property-row">
-        <span class="property-row-label">Appearance</span>
-        <div class="property-row-value">${appearance}</div>
-      </div>`;
+    ? row('Scale', scale)
+    : row('Appearance', appearance);
 
-  panel.innerHTML = `
-    <div class="property-section">
-      <div class="property-title">App Icon</div>
-      <div class="property-row">
-        <span class="property-row-label">Name</span>
-        <div class="property-row-value" style="flex: 1;">${escapeHtml(asset.name)}</div>
-        <button class="finder-button" data-path="${asset.path}">
-          <i class="codicon codicon-folder-opened"></i>
-        </button>
-      </div>
-      <div class="property-row">
-        <span class="property-row-label">Platforms</span>
-        <div class="property-row-value">${platformsList || 'iOS'}</div>
-      </div>
-    </div>
-    <div class="property-section" style="border-top: 1px solid var(--vscode-panel-border); padding-top: 16px; margin-top: 16px;">
-      <div class="property-title">Icon</div>
-      <div class="property-row">
-        <span class="property-row-label">Size</span>
-        <div class="property-row-value">${size}</div>
-      </div>
+  const html = `
+    ${section('App Icon', `
+      ${nameRow(asset.name, asset.path)}
+      ${row('Platforms', platformsList)}
+    `)}
+    ${section('Icon', `
+      ${row('Size', size)}
       ${scaleOrAppearanceHtml}
-      <div class="property-row">
-        <span class="property-row-label">File Name</span>
-        <div class="property-row-value">${escapeHtml(filename)}</div>
-      </div>
-      <div class="property-row">
-        <span class="property-row-label">Image Size</span>
-        <div class="property-row-value">${imageSizeText}</div>
-      </div>
-    </div>
+      ${row('File Name', escapeHtml(filename))}
+      ${row('Image Size', formatImageSize(width, height))}
+    `, { border: true })}
   `;
 
-  addFinderButtonHandler(panel, vscode);
+  render(panel, html, vscode);
 }
 
 // Render image variant properties
 export async function renderImageVariantProperties(asset, filename, uri, scale, vscode) {
   const panel = document.getElementById('propertiesPanel');
-
-  let imageWidth = 0;
-  let imageHeight = 0;
-  try {
-    const img = new Image();
-    await new Promise((resolve, reject) => {
-      img.onload = () => {
-        imageWidth = img.naturalWidth;
-        imageHeight = img.naturalHeight;
-        resolve();
-      };
-      img.onerror = reject;
-      img.src = uri;
-    });
-  } catch (e) {
-    console.error('Failed to load image:', e);
-  }
-
-  const imageSizeText = imageWidth && imageHeight
-    ? `${imageWidth} × ${imageHeight} pixels`
-    : 'Unknown';
-
-  const idioms = new Set();
-  asset.images.forEach(img => {
-    if (img.subtype === 'mac-catalyst') {
-      idioms.add('mac-catalyst');
-    } else {
-      idioms.add(img.idiom || 'universal');
-    }
-  });
-
-  const allDevices = [
-    { id: 'iphone', label: 'iPhone' },
-    { id: 'ipad', label: 'iPad' },
-    { id: 'mac-catalyst', label: 'Mac Catalyst Scaled' },
-    { id: 'car', label: 'CarPlay' },
-    { id: 'vision', label: 'Apple Vision' },
-    { id: 'watch', label: 'Apple Watch' },
-    { id: 'tv', label: 'Apple TV' }
-  ];
-
-  const devicesHtml = allDevices.map(device => {
-    const checked = idioms.has(device.id) ? '☑' : '☐';
-    const indent = device.id === 'mac-catalyst' ? 'padding-left: 16px;' : '';
-    return `<div style="padding: 2px 0; ${indent}">${checked} ${device.label}</div>`;
-  }).join('');
-
-  const universalHtml = idioms.has('universal')
-    ? '<div style="padding: 2px 0; margin-bottom: 4px;">☑ Universal</div>'
-    : '';
+  const { width, height } = await loadImageDimensions(uri);
+  const idioms = collectIdioms(asset.images);
 
   const uniqueScales = [...new Set(asset.images.map(i => i.scale))];
   const scalesText = uniqueScales.length <= 1 ? 'Single Scale' : 'Individual Scales';
-
   const renderAsText = asset.templateRenderingIntent === 'template' ? 'Template Image' :
     asset.templateRenderingIntent === 'original' ? 'Original Image' : 'Default';
 
-  panel.innerHTML = `
-    <div class="property-section">
-      <div class="property-title">Image Set</div>
-      <div class="property-row">
-        <span class="property-row-label">Name</span>
-        <div class="property-row-value" style="flex: 1;">${escapeHtml(asset.name)}</div>
-        <button class="finder-button" data-path="${asset.path}">
-          <i class="codicon codicon-folder-opened"></i>
-        </button>
-      </div>
-      <div class="property-row">
-        <span class="property-row-label">Render As</span>
-        <div class="property-row-value">${renderAsText}</div>
-      </div>
+  const html = `
+    ${section('Image Set', `
+      ${nameRow(asset.name, asset.path)}
+      ${row('Render As', renderAsText)}
       <div class="property-row" style="align-items: flex-start;">
         <span class="property-row-label">Devices</span>
-        <div style="font-size: 12px; line-height: 1.5;">
-          ${universalHtml}
-          ${devicesHtml}
-        </div>
+        <div style="font-size: 12px; line-height: 1.5;">${renderDevicesHtml(idioms)}</div>
       </div>
-      <div class="property-row">
-        <span class="property-row-label">Scales</span>
-        <div class="property-row-value">${scalesText}</div>
-      </div>
-    </div>
-    <div class="property-section" style="border-top: 1px solid var(--vscode-panel-border); padding-top: 16px; margin-top: 16px;">
-      <div class="property-title">Image</div>
-      <div class="property-row">
-        <span class="property-row-label">File Name</span>
-        <div class="property-row-value">${escapeHtml(filename)}</div>
-      </div>
-      <div class="property-row">
-        <span class="property-row-label">Image Size</span>
-        <div class="property-row-value">${imageSizeText}</div>
-      </div>
-      <div class="property-row">
-        <span class="property-row-label">Color Space</span>
-        <div class="property-row-value">sRGB IEC61966-2.1</div>
-      </div>
-    </div>
+      ${row('Scales', scalesText)}
+    `)}
+    ${section('Image', `
+      ${row('File Name', escapeHtml(filename))}
+      ${row('Image Size', formatImageSize(width, height))}
+      ${row('Color Space', 'sRGB IEC61966-2.1')}
+    `, { border: true })}
   `;
 
-  addFinderButtonHandler(panel, vscode);
+  render(panel, html, vscode);
 }
 
 // Render general properties for asset
 export function renderProperties(asset, vscode) {
   const panel = document.getElementById('propertiesPanel');
+  let html = '';
 
   if (asset.type === 'image') {
-    const idioms = new Set();
-    asset.images.forEach(img => {
-      if (img.subtype === 'mac-catalyst') {
-        idioms.add('mac-catalyst');
-      } else {
-        idioms.add(img.idiom || 'universal');
-      }
-    });
-
-    const allDevices = [
-      { id: 'iphone', label: 'iPhone' },
-      { id: 'ipad', label: 'iPad' },
-      { id: 'mac-catalyst', label: 'Mac Catalyst Scaled' },
-      { id: 'car', label: 'CarPlay' },
-      { id: 'vision', label: 'Apple Vision' },
-      { id: 'watch', label: 'Apple Watch' },
-      { id: 'tv', label: 'Apple TV' }
-    ];
-
-    const devicesHtml = allDevices.map(device => {
-      const checked = idioms.has(device.id) ? '☑' : '☐';
-      const indent = device.id === 'mac-catalyst' ? 'padding-left: 16px;' : '';
-      return `<div style="padding: 2px 0; ${indent}">${checked} ${device.label}</div>`;
-    }).join('');
-
-    const universalHtml = idioms.has('universal')
-      ? '<div style="padding: 2px 0; margin-bottom: 4px;">☑ Universal</div>'
-      : '';
-
+    const idioms = collectIdioms(asset.images);
     const uniqueScales = [...new Set(asset.images.map(i => i.scale))];
     const scalesText = uniqueScales.length <= 1 ? 'Single Scale' : 'Individual Scales';
-
     const renderAsText = asset.templateRenderingIntent === 'template' ? 'Template Image' :
       asset.templateRenderingIntent === 'original' ? 'Original Image' : 'Default';
 
-    panel.innerHTML = `
-      <div class="property-section">
-        <div class="property-title">Image Set</div>
-        <div class="property-row">
-          <span class="property-row-label">Name</span>
-          <div class="property-row-value" style="flex: 1;">${escapeHtml(asset.name)}</div>
-          <button class="finder-button" data-path="${asset.path}">
-            <i class="codicon codicon-folder-opened"></i>
-          </button>
-        </div>
-        <div class="property-row">
-          <span class="property-row-label">Render As</span>
-          <div class="property-row-value">${renderAsText}</div>
-        </div>
-        <div class="property-row" style="align-items: flex-start;">
-          <span class="property-row-label">Devices</span>
-          <div style="font-size: 12px; line-height: 1.5;">
-            ${universalHtml}
-            ${devicesHtml}
-          </div>
-        </div>
-        <div class="property-row">
-          <span class="property-row-label">Scales</span>
-          <div class="property-row-value">${scalesText}</div>
-        </div>
+    html = section('Image Set', `
+      ${nameRow(asset.name, asset.path)}
+      ${row('Render As', renderAsText)}
+      <div class="property-row" style="align-items: flex-start;">
+        <span class="property-row-label">Devices</span>
+        <div style="font-size: 12px; line-height: 1.5;">${renderDevicesHtml(idioms)}</div>
       </div>
-    `;
-
-    addFinderButtonHandler(panel, vscode);
+      ${row('Scales', scalesText)}
+    `);
   } else if (asset.type === 'appicon') {
     const platformSizes = { ios: new Set(), macos: new Set(), watchos: new Set() };
 
     asset.icons.forEach(icon => {
       let platform = icon.platform;
-      // macOS icons use idiom: "mac" without platform field
-      if (!platform && icon.idiom === 'mac') {
-        platform = 'macos';
-      }
-      // watchOS icons use idiom: "watch" without platform field
-      if (!platform && icon.idiom === 'watch') {
-        platform = 'watchos';
-      }
+      if (!platform && icon.idiom === 'mac') platform = 'macos';
+      if (!platform && icon.idiom === 'watch') platform = 'watchos';
       platform = platform || 'ios';
-      if (platformSizes[platform] && icon.size) {
-        platformSizes[platform].add(icon.size);
-      }
+      if (platformSizes[platform] && icon.size) platformSizes[platform].add(icon.size);
     });
 
     const getPlatformValue = (platform, hasSingleSizeOption) => {
@@ -399,165 +281,29 @@ export function renderProperties(asset, vscode) {
       return 'All Sizes';
     };
 
-    const iosValue = getPlatformValue('ios', true);
-    const macosValue = getPlatformValue('macos', false);
-    const watchosValue = getPlatformValue('watchos', true);
-
-    panel.innerHTML = `
-      <div class="property-section">
-        <div class="property-title">App Icon</div>
-        <div class="property-row">
-          <span class="property-row-label">Name</span>
-          <div class="property-row-value" style="flex: 1;">${escapeHtml(asset.name)}</div>
-          <button class="finder-button" data-path="${asset.path}">
-            <i class="codicon codicon-folder-opened"></i>
-          </button>
-        </div>
-        <div class="property-row">
-          <span class="property-row-label">iOS</span>
-          <div class="property-row-value">${iosValue}</div>
-        </div>
-        <div class="property-row">
-          <span class="property-row-label">macOS</span>
-          <div class="property-row-value">${macosValue}</div>
-        </div>
-        <div class="property-row">
-          <span class="property-row-label">watchOS</span>
-          <div class="property-row-value">${watchosValue}</div>
-        </div>
-      </div>
-    `;
-
-    addFinderButtonHandler(panel, vscode);
+    html = section('App Icon', `
+      ${nameRow(asset.name, asset.path)}
+      ${row('iOS', getPlatformValue('ios', true))}
+      ${row('macOS', getPlatformValue('macos', false))}
+      ${row('watchOS', getPlatformValue('watchos', true))}
+    `);
   } else if (asset.type === 'color') {
-    const idioms = new Set();
-    const hasLuminosity = new Set();
-    const hasContrast = new Set();
-    let gamut = 'Any';
+    const idioms = collectIdioms(asset.colors);
 
-    asset.colors.forEach(item => {
-      if (item.subtype === 'mac-catalyst') {
-        idioms.add('mac-catalyst');
-      } else {
-        idioms.add(item.idiom || 'universal');
-      }
-
-      if (item.color?.['color-space']) {
-        gamut = item.color['color-space'].toUpperCase();
-      }
-
-      const appearances = item.appearances || [];
-      appearances.forEach(app => {
-        if (app.appearance === 'luminosity') {
-          hasLuminosity.add(app.value);
-        } else if (app.appearance === 'contrast') {
-          hasContrast.add(app.value);
-        }
-      });
-    });
-
-    const allDevices = [
-      { id: 'iphone', label: 'iPhone' },
-      { id: 'ipad', label: 'iPad' },
-      { id: 'mac-catalyst', label: 'Mac Catalyst Scaled' },
-      { id: 'car', label: 'CarPlay' },
-      { id: 'vision', label: 'Apple Vision' },
-      { id: 'watch', label: 'Apple Watch' },
-      { id: 'tv', label: 'Apple TV' }
-    ];
-
-    const devicesHtml = allDevices.map(device => {
-      const checked = idioms.has(device.id) ? '☑' : '☐';
-      const indent = device.id === 'mac-catalyst' ? 'padding-left: 16px;' : '';
-      return `<div style="padding: 2px 0; ${indent}">${checked} ${device.label}</div>`;
-    }).join('');
-
-    let appearancesText = 'None';
-    if (hasLuminosity.has('light') || hasLuminosity.has('dark') || hasContrast.has('high')) {
-      const parts = ['Any'];
-      if (hasLuminosity.has('light')) parts.push('Light');
-      if (hasLuminosity.has('dark')) parts.push('Dark');
-      appearancesText = parts.join(', ');
-      if (hasContrast.has('high')) {
-        appearancesText += ' + High Contrast';
-      }
-    }
-
-    const universalHtml = idioms.has('universal')
-      ? '<div style="padding: 2px 0; margin-bottom: 4px;">☑ Universal</div>'
-      : '';
-
-    panel.innerHTML = `
-      <div class="property-section">
-        <div class="property-title">Color Set</div>
-        <div class="property-row">
-          <span class="property-row-label">Name</span>
-          <div class="property-row-value" style="flex: 1;">${escapeHtml(asset.name)}</div>
-          <button class="finder-button" data-path="${asset.path}">
-            <i class="codicon codicon-folder-opened"></i>
-          </button>
-        </div>
-        <div class="property-row" style="align-items: flex-start;">
-          <span class="property-row-label">Devices</span>
-          <div style="font-size: 12px; line-height: 1.5;">
-            ${universalHtml}
-            ${devicesHtml}
-          </div>
-        </div>
-        <div class="property-row">
-          <span class="property-row-label">Appearances</span>
-          <div class="property-row-value">${appearancesText}</div>
-        </div>
-        <div class="property-row">
-          <span class="property-row-label">Gamut</span>
-          <div class="property-row-value">${gamut}</div>
-        </div>
+    html = section('Color Set', `
+      ${nameRow(asset.name, asset.path)}
+      <div class="property-row" style="align-items: flex-start;">
+        <span class="property-row-label">Devices</span>
+        <div style="font-size: 12px; line-height: 1.5;">${renderDevicesHtml(idioms)}</div>
       </div>
-    `;
-
-    addFinderButtonHandler(panel, vscode);
+      ${row('Appearances', getAppearancesText(asset.colors))}
+      ${row('Gamut', getGamut(asset.colors))}
+    `);
   } else if (asset.type === 'data') {
-    panel.innerHTML = `
-      <div class="property-section">
-        <div class="property-title">Data Set</div>
-        <div class="property-row">
-          <span class="property-row-label">Name</span>
-          <div class="property-row-value" style="flex: 1;">${escapeHtml(asset.name)}</div>
-          <button class="finder-button" data-path="${asset.path}">
-            <i class="codicon codicon-folder-opened"></i>
-          </button>
-        </div>
-      </div>
-    `;
-
-    addFinderButtonHandler(panel, vscode);
+    html = section('Data Set', nameRow(asset.name, asset.path));
   } else if (asset.type === 'folder') {
-    panel.innerHTML = `
-      <div class="property-section">
-        <div class="property-title">Folder</div>
-        <div class="property-row">
-          <span class="property-row-label">Name</span>
-          <div class="property-row-value" style="flex: 1;">${escapeHtml(asset.name)}</div>
-          <button class="finder-button" data-path="${asset.path}">
-            <i class="codicon codicon-folder-opened"></i>
-          </button>
-        </div>
-      </div>
-    `;
-
-    addFinderButtonHandler(panel, vscode);
+    html = section('Folder', nameRow(asset.name, asset.path));
   }
-}
 
-// Helper to add finder button click handler
-function addFinderButtonHandler(panel, vscode) {
-  const btn = panel.querySelector('.finder-button');
-  if (btn) {
-    btn.addEventListener('click', (e) => {
-      const path = e.currentTarget.dataset.path;
-      if (path) {
-        vscode.postMessage({ command: 'showInFinder', filePath: path });
-      }
-    });
-  }
+  render(panel, html, vscode);
 }
