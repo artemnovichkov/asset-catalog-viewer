@@ -60,7 +60,7 @@ export class XCAssetsViewer {
 
     // Watch for configuration changes
     const configWatcher = vscode.workspace.onDidChangeConfiguration(e => {
-      if (e.affectsConfiguration('xcassetsViewer.largeAssetThreshold')) {
+      if (e.affectsConfiguration('assetCatalogViewer.largeAssetThreshold')) {
         refresh();
       }
     });
@@ -227,7 +227,7 @@ export class XCAssetsViewer {
       }).filter((item): item is ConvertedAssetItem => item !== null);
     };
 
-    const config = vscode.workspace.getConfiguration('xcassetsViewer');
+    const config = vscode.workspace.getConfiguration('assetCatalogViewer');
     const largeAssetThreshold = config.get<number>('largeAssetThreshold', 500);
 
     const assetsData = {

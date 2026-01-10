@@ -69,7 +69,7 @@
     "configuration": {
       "title": "Asset Catalog Viewer",
       "properties": {
-        "xcassetsViewer.largeAssetThreshold": {
+        "assetCatalogViewer.largeAssetThreshold": {
           "type": "number",
           "default": 500,
           "description": "Threshold in KB for large asset warnings."
