@@ -17,10 +17,10 @@
 - [x] **Task: Conductor - User Manual Verification 'Data Model & Parsing' (Protocol in workflow.md)****
 
 ## Phase 3: UI Implementation
-- [ ] **Task 1: Display Warning Icon in Asset List**
+- [x] **Task 1: Display Warning Icon in Asset List** <!-- 6dbe060 -->
     - Update `src/webview/assetList.js` to compare the asset size against the threshold.
     - Render a warning icon (⚠️) next to the asset name if the threshold is exceeded.
-- [ ] **Task 2: Show Size Information**
+- [x] **Task 2: Show Size Information** <!-- 6b5f049 -->
     - Add a tooltip to the warning icon showing the actual size.
     - Update `src/webview/properties.js` to highlight the size in the inspector panel when it exceeds the threshold.
 - [ ] **Task: Conductor - User Manual Verification 'UI Implementation' (Protocol in workflow.md)**
