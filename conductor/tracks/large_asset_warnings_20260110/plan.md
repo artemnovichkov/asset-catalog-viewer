@@ -9,10 +9,10 @@
 - [x] **Task: Conductor - User Manual Verification 'Infrastructure & Configuration' (Protocol in workflow.md)****
 
 ## Phase 2: Data Model & Parsing
-- [ ] **Task 1: Calculate Asset Sizes**
+- [x] **Task 1: Calculate Asset Sizes** <!-- 3e9d45e -->
     - Modify `src/parsers/assetParser.ts` to calculate the total file size (in bytes or KB) for each asset (summing up its variants).
     - Update the `Asset` type definition in `src/types.ts` to include a `size` property.
-- [ ] **Task 2: Send Size Data to Webview**
+- [x] **Task 2: Send Size Data to Webview** <!-- 87b23fa -->
     - Ensure the parsed asset data sent to the webview includes the new `size` property.
 - [ ] **Task: Conductor - User Manual Verification 'Data Model & Parsing' (Protocol in workflow.md)**
 
