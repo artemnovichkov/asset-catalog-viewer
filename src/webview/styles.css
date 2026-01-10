@@ -76,6 +76,14 @@ body {
   background-color: var(--vscode-list-activeSelectionBackground);
   color: var(--vscode-list-activeSelectionForeground);
 }
+.large-asset-warning {
+  color: var(--vscode-notificationsWarningIcon-foreground);
+  margin-left: auto;
+  margin-right: 4px;
+  cursor: help;
+  display: flex;
+  align-items: center;
+}
 .asset-list-item:focus,
 .asset-list-item:focus-visible {
   outline: 2px solid var(--vscode-focusBorder);

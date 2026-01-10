@@ -1,6 +1,6 @@
 import { allAssets, expandedFolders, filterText, currentSelectedAssetIndex } from './state.js';
 import { filterItems } from './assetData.js';
-import { escapeHtml, getColorValue, showLoading, hideLoading } from './utils.js';
+import { escapeHtml, getColorValue, showLoading, hideLoading, formatFileSize } from './utils.js';
 import { renderPdfToCanvas } from './pdfRenderer.js';
 import { selectAsset } from './selection.js';
 import { startRename } from './rename.js';
@@ -74,9 +74,22 @@ export async function renderAssetList(assetsData, vscode) {
           iconHtml = `<i class="codicon codicon-file asset-icon"></i>`;
         }
 
+        let warningHtml = '';
+        if (item.size && assetsData.config && assetsData.config.largeAssetThreshold) {
+          const sizeKb = item.size / 1024;
+          if (sizeKb > assetsData.config.largeAssetThreshold) {
+            warningHtml = `
+              <div class="large-asset-warning" title="Large Asset: ${formatFileSize(item.size)} (Threshold: ${assetsData.config.largeAssetThreshold} KB)">
+                <i class="codicon codicon-warning"></i>
+              </div>
+            `;
+          }
+        }
+
         html += `<div class="asset-list-item" data-index="${assetIndex}" data-path="${item.path || ''}" style="padding-left: ${indent + 24 + 8}px;">
           ${iconHtml}
           <span>${escapeHtml(item.name)}</span>
+          ${warningHtml}
         </div>`;
       }
     });
