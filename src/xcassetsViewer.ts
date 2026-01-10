@@ -174,6 +174,7 @@ export class XCAssetsViewer {
             type: 'image' as const,
             name: item.imageSet.name,
             path: item.path || '',
+            size: item.size || 0,
             images: item.imageSet.images.map(img => ({
               ...img,
               uri: img.path ? webview.asWebviewUri(vscode.Uri.file(img.path)).toString() : '',
@@ -187,6 +188,7 @@ export class XCAssetsViewer {
             type: 'color' as const,
             name: item.colorSet.name,
             path: item.path || '',
+            size: item.size || 0,
             colors: item.colorSet.colors
           };
         } else if (item.type === 'dataset' && item.dataSet) {
@@ -194,6 +196,7 @@ export class XCAssetsViewer {
             type: 'data' as const,
             name: item.dataSet.name,
             path: item.path || '',
+            size: item.size || 0,
             data: item.dataSet.data.map(d => {
               const converted: ConvertedDataItem = {
                 filename: d.filename,
@@ -212,6 +215,7 @@ export class XCAssetsViewer {
             type: 'appicon' as const,
             name: item.appIconSet.name,
             path: item.path || '',
+            size: item.size || 0,
             icons: item.appIconSet.icons.map(icon => ({
               ...icon,
               uri: icon.path ? webview.asWebviewUri(vscode.Uri.file(icon.path)).toString() : '',
