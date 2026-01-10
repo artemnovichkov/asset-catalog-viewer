@@ -58,8 +58,16 @@ export class XCAssetsViewer {
       refresh();
     });
 
+    // Watch for configuration changes
+    const configWatcher = vscode.workspace.onDidChangeConfiguration(e => {
+      if (e.affectsConfiguration('xcassetsViewer.largeAssetThreshold')) {
+        refresh();
+      }
+    });
+
     panel.onDidDispose(() => {
       watcher.dispose();
+      configWatcher.dispose();
       if (debounceTimer) {
         clearTimeout(debounceTimer);
       }
@@ -215,8 +223,14 @@ export class XCAssetsViewer {
       }).filter((item): item is ConvertedAssetItem => item !== null);
     };
 
+    const config = vscode.workspace.getConfiguration('xcassetsViewer');
+    const largeAssetThreshold = config.get<number>('largeAssetThreshold', 500);
+
     const assetsData = {
-      items: convertItems(catalog.items)
+      items: convertItems(catalog.items),
+      config: {
+        largeAssetThreshold
+      }
     };
 
     const assetsJson = JSON.stringify(assetsData);
