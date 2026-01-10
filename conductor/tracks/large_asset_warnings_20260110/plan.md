@@ -1,7 +1,7 @@
 # Plan: Large Asset Warnings
 
 ## Phase 1: Infrastructure & Configuration
-- [ ] **Task 1: Add Extension Setting**
+- [x] **Task 1: Add Extension Setting** <!-- 5463e71 -->
     - Update `package.json` to include the `xcassetsViewer.largeAssetThreshold` setting with a default value of 500.
 - [ ] **Task 2: Pass Configuration to Webview**
     - Update `src/xcassetsViewer.ts` to read the threshold setting and include it in the initial state sent to the webview.
