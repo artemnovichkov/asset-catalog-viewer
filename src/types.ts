@@ -109,10 +109,10 @@ export interface ConvertedAppIconVariant {
 
 export type ConvertedAssetItem =
   | { type: 'folder'; name: string; path: string; children: ConvertedAssetItem[] }
-  | { type: 'image'; name: string; path: string; images: ConvertedImageVariant[]; templateRenderingIntent?: string; preservesVectorRepresentation?: boolean }
-  | { type: 'color'; name: string; path: string; colors: ColorDefinition[] }
-  | { type: 'data'; name: string; path: string; data: ConvertedDataItem[] }
-  | { type: 'appicon'; name: string; path: string; icons: ConvertedAppIconVariant[] };
+  | { type: 'image'; name: string; path: string; size: number; images: ConvertedImageVariant[]; templateRenderingIntent?: string; preservesVectorRepresentation?: boolean }
+  | { type: 'color'; name: string; path: string; size: number; colors: ColorDefinition[] }
+  | { type: 'data'; name: string; path: string; size: number; data: ConvertedDataItem[] }
+  | { type: 'appicon'; name: string; path: string; size: number; icons: ConvertedAppIconVariant[] };
 
 export interface AssetCatalog {
   name: string;
@@ -123,6 +123,7 @@ export interface AssetItem {
   type: 'folder' | 'imageset' | 'colorset' | 'dataset' | 'appiconset';
   name: string;
   path?: string;
+  size?: number;
   imageSet?: ImageSet;
   colorSet?: ColorSet;
   dataSet?: DataSet;

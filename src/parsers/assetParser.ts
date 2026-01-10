@@ -70,28 +70,46 @@ export class AssetParser {
           console.warn(`Failed to parse imageset: ${entryPath}`);
           return null;
         }
-        return { type: 'imageset', name: imageSet.name, path: entryPath, imageSet };
+        let size = 0;
+        for (const img of imageSet.images) {
+          if (img.path) {
+            size += await this.getFileSize(img.path);
+          }
+        }
+        return { type: 'imageset', name: imageSet.name, path: entryPath, imageSet, size };
       } else if (entry.name.endsWith('.appiconset')) {
         const appIconSet = await this.parseAppIconSet(entryPath);
         if (!appIconSet) {
           console.warn(`Failed to parse appiconset: ${entryPath}`);
           return null;
         }
-        return { type: 'appiconset', name: appIconSet.name, path: entryPath, appIconSet };
+        let size = 0;
+        for (const icon of appIconSet.icons) {
+          if (icon.path) {
+            size += await this.getFileSize(icon.path);
+          }
+        }
+        return { type: 'appiconset', name: appIconSet.name, path: entryPath, appIconSet, size };
       } else if (entry.name.endsWith('.colorset')) {
         const colorSet = await this.parseColorSet(entryPath);
         if (!colorSet) {
           console.warn(`Failed to parse colorset: ${entryPath}`);
           return null;
         }
-        return { type: 'colorset', name: colorSet.name, path: entryPath, colorSet };
+        return { type: 'colorset', name: colorSet.name, path: entryPath, colorSet, size: 0 };
       } else if (entry.name.endsWith('.dataset')) {
         const dataSet = await this.parseDataSet(entryPath);
         if (!dataSet) {
           console.warn(`Failed to parse dataset: ${entryPath}`);
           return null;
         }
-        return { type: 'dataset', name: dataSet.name, path: entryPath, dataSet };
+        let size = 0;
+        for (const item of dataSet.data) {
+          if (item.path) {
+            size += await this.getFileSize(item.path);
+          }
+        }
+        return { type: 'dataset', name: dataSet.name, path: entryPath, dataSet, size };
       } else {
         // Regular folder - recurse into it
         const children = await this.parseDirectory(entryPath, depth + 1, root);
@@ -305,6 +323,15 @@ export class AssetParser {
       );
     } catch {
       return false;
+    }
+  }
+
+  private async getFileSize(filePath: string): Promise<number> {
+    try {
+      const stats = await fs.promises.stat(filePath);
+      return stats.size;
+    } catch {
+      return 0;
     }
   }
 }
