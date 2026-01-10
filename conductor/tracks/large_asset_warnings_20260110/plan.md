@@ -3,7 +3,7 @@
 ## Phase 1: Infrastructure & Configuration
 - [x] **Task 1: Add Extension Setting** <!-- 5463e71 -->
     - Update `package.json` to include the `xcassetsViewer.largeAssetThreshold` setting with a default value of 500.
-- [ ] **Task 2: Pass Configuration to Webview**
+- [x] **Task 2: Pass Configuration to Webview** <!-- ca65125 -->
     - Update `src/xcassetsViewer.ts` to read the threshold setting and include it in the initial state sent to the webview.
     - Listen for configuration changes and post a message to the webview when the threshold is updated.
 - [ ] **Task: Conductor - User Manual Verification 'Infrastructure & Configuration' (Protocol in workflow.md)**
