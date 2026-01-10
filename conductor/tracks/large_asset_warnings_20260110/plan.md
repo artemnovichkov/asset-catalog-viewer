@@ -8,7 +8,7 @@
     - Listen for configuration changes and post a message to the webview when the threshold is updated.
 - [x] **Task: Conductor - User Manual Verification 'Infrastructure & Configuration' (Protocol in workflow.md)****
 
-## Phase 2: Data Model & Parsing
+## Phase 2: Data Model & Parsing [checkpoint: 581db74]
 - [x] **Task 1: Calculate Asset Sizes** <!-- 3e9d45e -->
     - Modify `src/parsers/assetParser.ts` to calculate the total file size (in bytes or KB) for each asset (summing up its variants).
     - Update the `Asset` type definition in `src/types.ts` to include a `size` property.
