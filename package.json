@@ -65,7 +65,17 @@
         "label": "Asset Catalog Viewer Icons",
         "path": "./icons/asset-catalog-viewer-icons-theme.json"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "Asset Catalog Viewer",
+      "properties": {
+        "xcassetsViewer.largeAssetThreshold": {
+          "type": "number",
+          "default": 500,
+          "description": "Threshold in KB for large asset warnings."
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile:prod",
