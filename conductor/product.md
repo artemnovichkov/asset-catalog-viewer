@@ -20,6 +20,7 @@ To provide a seamless, high-fidelity, and lightweight asset management experienc
 - **Interactive Asset Management:**
     - Rename and delete assets or folders.
     - Add new assets (Image Sets, Color Sets, etc.) via context menus.
+    - **Large Asset Detection:** Visual warnings for assets exceeding a configurable size threshold.
 - **Editor Integration:** Deep integration with VS Code's sidebar, command palette, and Finder/Quick Look features.
 
 ## User Experience (UX)
