@@ -30,6 +30,7 @@ A VS Code and Cursor extension that provides an Xcode-like interface for preview
 
 - **Asset Management** - Rename and delete assets or folders directly from the interface
 - **Search Filter** - Filter assets by name in real-time across all folders
+- **Large Asset Detection** - Identify heavy assets with visual warning indicators (⚠️) in the sidebar
 - **Variant Selection** - Click on individual image/color variants to see detailed properties
 - **Quick Look** - Press Space to open selected assets in macOS Quick Look
 - **Show in Finder** - Right-click any asset to reveal it in Finder
@@ -63,6 +64,14 @@ A VS Code and Cursor extension that provides an Xcode-like interface for preview
    - Press `⌘⇧P`
    - Type "Open Asset Catalog Viewer"
    - Select the command and choose your `.xcassets` directory
+
+## Configuration
+
+You can customize the extension behavior via VS Code settings:
+
+| Setting | Default | Description |
+|:---|:---|:---|
+| `assetCatalogViewer.largeAssetThreshold` | `500` | Threshold in KB. Assets larger than this value will show a warning icon in the asset list. |
 
 ## Development
 
