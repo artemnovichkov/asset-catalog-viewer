@@ -30,7 +30,7 @@ export class XCAssetsViewer {
 
     const parser = new AssetParser();
     const assets = await parser.parse(xcassetsPath);
-    panel.webview.html = await this.getHtmlForWebview(panel.webview, assets, xcassetsPath);
+    panel.webview.html = await this.getHtmlForWebview(panel.webview, assets);
 
     // Watch for file system changes
     const watcher = vscode.workspace.createFileSystemWatcher(
@@ -44,7 +44,7 @@ export class XCAssetsViewer {
       }
       debounceTimer = setTimeout(async () => {
         const updatedAssets = await parser.parse(xcassetsPath);
-        panel.webview.html = await this.getHtmlForWebview(panel.webview, updatedAssets, xcassetsPath);
+        panel.webview.html = await this.getHtmlForWebview(panel.webview, updatedAssets);
       }, 300);
     };
 
@@ -97,7 +97,7 @@ export class XCAssetsViewer {
 
           // Re-parse and refresh webview
           const assets = await parser.parse(xcassetsPath);
-          panel.webview.html = await this.getHtmlForWebview(panel.webview, assets, xcassetsPath);
+          panel.webview.html = await this.getHtmlForWebview(panel.webview, assets);
 
         } catch (err: any) {
           vscode.window.showErrorMessage(`Rename failed: ${err.message}`);
@@ -121,7 +121,7 @@ export class XCAssetsViewer {
 
           // Re-parse and refresh webview
           const assets = await parser.parse(xcassetsPath);
-          panel.webview.html = await this.getHtmlForWebview(panel.webview, assets, xcassetsPath);
+          panel.webview.html = await this.getHtmlForWebview(panel.webview, assets);
         } catch (err: any) {
           vscode.window.showErrorMessage(`Delete failed: ${err.message}`);
         }
@@ -149,8 +149,7 @@ export class XCAssetsViewer {
 
   private async getHtmlForWebview(
     webview: vscode.Webview,
-    catalog: AssetCatalog,
-    _xcassetsPath: string
+    catalog: AssetCatalog
   ): Promise<string> {
     // Convert items to webview format with URIs
     const convertItems = (items: AssetItem[]): ConvertedAssetItem[] => {
