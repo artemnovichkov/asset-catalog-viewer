@@ -95,10 +95,10 @@ function formatImageSize(width, height) {
 
 // Helper: property row HTML
 function row(label, value, opts = {}) {
-  const style = opts.alignTop ? ' style="align-items: flex-start;"' : '';
+  const rowClass = opts.alignTop ? 'property-row align-top' : 'property-row';
   const valueStyle = opts.flex ? ' style="flex: 1;"' : '';
   return `
-    <div class="property-row"${style}>
+    <div class="${rowClass}">
       <span class="property-row-label">${label}</span>
       <div class="property-row-value"${valueStyle}>${value}</div>
     </div>`;
@@ -167,7 +167,7 @@ export function renderColorProperties(asset, colorIndex, vscode) {
   const html = `
     ${section('Color Set', `
       ${nameRow(asset.name, asset.path)}
-      <div class="property-row" style="align-items: flex-start;">
+      <div class="property-row align-top">
         <span class="property-row-label">Devices</span>
         <div style="font-size: 12px; line-height: 1.5;">${renderDevicesHtml(idioms)}</div>
       </div>
@@ -221,12 +221,19 @@ export async function renderImageVariantProperties(asset, filename, uri, scale, 
   const scalesText = uniqueScales.length <= 1 ? 'Single Scale' : 'Individual Scales';
   const renderAsText = asset.templateRenderingIntent === 'template' ? 'Template Image' :
     asset.templateRenderingIntent === 'original' ? 'Original Image' : 'Default';
+  const preservesVectorCheckbox = asset.preservesVectorRepresentation ? '☑' : '☐';
 
   const html = `
     ${section('Image Set', `
       ${nameRow(asset.name, asset.path)}
       ${row('Render As', renderAsText)}
-      <div class="property-row" style="align-items: flex-start;">
+      <div class="property-row align-top">
+        <span class="property-row-label">Resizing</span>
+        <div style="font-size: 12px; line-height: 1.5;">
+          <div style="padding: 2px 0;">${preservesVectorCheckbox} Preserve Vector Data</div>
+        </div>
+      </div>
+      <div class="property-row align-top">
         <span class="property-row-label">Devices</span>
         <div style="font-size: 12px; line-height: 1.5;">${renderDevicesHtml(idioms)}</div>
       </div>
@@ -253,11 +260,18 @@ export function renderProperties(asset, vscode) {
     const scalesText = uniqueScales.length <= 1 ? 'Single Scale' : 'Individual Scales';
     const renderAsText = asset.templateRenderingIntent === 'template' ? 'Template Image' :
       asset.templateRenderingIntent === 'original' ? 'Original Image' : 'Default';
+    const preservesVectorCheckbox = asset.preservesVectorRepresentation ? '☑' : '☐';
 
     html = section('Image Set', `
       ${nameRow(asset.name, asset.path)}
       ${row('Render As', renderAsText)}
-      <div class="property-row" style="align-items: flex-start;">
+      <div class="property-row align-top">
+        <span class="property-row-label">Resizing</span>
+        <div style="font-size: 12px; line-height: 1.5;">
+          <div style="padding: 2px 0;">${preservesVectorCheckbox} Preserve Vector Data</div>
+        </div>
+      </div>
+      <div class="property-row align-top">
         <span class="property-row-label">Devices</span>
         <div style="font-size: 12px; line-height: 1.5;">${renderDevicesHtml(idioms)}</div>
       </div>
@@ -292,7 +306,7 @@ export function renderProperties(asset, vscode) {
 
     html = section('Color Set', `
       ${nameRow(asset.name, asset.path)}
-      <div class="property-row" style="align-items: flex-start;">
+      <div class="property-row align-top">
         <span class="property-row-label">Devices</span>
         <div style="font-size: 12px; line-height: 1.5;">${renderDevicesHtml(idioms)}</div>
       </div>

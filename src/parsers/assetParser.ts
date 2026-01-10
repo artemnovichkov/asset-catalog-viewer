@@ -149,6 +149,7 @@ export class AssetParser {
       name: path.basename(imageSetPath, '.imageset'),
       images,
       templateRenderingIntent: contents.properties?.['template-rendering-intent'],
+      preservesVectorRepresentation: contents.properties?.['preserves-vector-representation'],
     };
   }
 

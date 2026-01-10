@@ -172,7 +172,8 @@ export class XCAssetsViewer {
               uri: img.path ? webview.asWebviewUri(vscode.Uri.file(img.path)).toString() : '',
               fsPath: img.path
             })),
-            templateRenderingIntent: item.imageSet.templateRenderingIntent
+            templateRenderingIntent: item.imageSet.templateRenderingIntent,
+            preservesVectorRepresentation: item.imageSet.preservesVectorRepresentation
           };
         } else if (item.type === 'colorset' && item.colorSet) {
           return {
