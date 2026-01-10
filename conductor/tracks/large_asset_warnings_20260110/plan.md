@@ -16,7 +16,7 @@
     - Ensure the parsed asset data sent to the webview includes the new `size` property.
 - [x] **Task: Conductor - User Manual Verification 'Data Model & Parsing' (Protocol in workflow.md)****
 
-## Phase 3: UI Implementation
+## Phase 3: UI Implementation [checkpoint: 9c7bd17]
 - [x] **Task 1: Display Warning Icon in Asset List** <!-- 6dbe060 -->
     - Update `src/webview/assetList.js` to compare the asset size against the threshold.
     - Render a warning icon (⚠️) next to the asset name if the threshold is exceeded.
