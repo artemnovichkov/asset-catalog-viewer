@@ -14,7 +14,7 @@
     - Update the `Asset` type definition in `src/types.ts` to include a `size` property.
 - [x] **Task 2: Send Size Data to Webview** <!-- 87b23fa -->
     - Ensure the parsed asset data sent to the webview includes the new `size` property.
-- [ ] **Task: Conductor - User Manual Verification 'Data Model & Parsing' (Protocol in workflow.md)**
+- [x] **Task: Conductor - User Manual Verification 'Data Model & Parsing' (Protocol in workflow.md)****
 
 ## Phase 3: UI Implementation
 - [ ] **Task 1: Display Warning Icon in Asset List**
