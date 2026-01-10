@@ -1,4 +1,4 @@
-import { escapeHtml, formatFileSize } from './utils.js';
+import { escapeHtml } from './utils.js';
 
 // Constants
 const ALL_DEVICES = [
@@ -102,18 +102,6 @@ function row(label, value, opts = {}) {
       <span class="property-row-label">${label}</span>
       <div class="property-row-value"${valueStyle}>${value}</div>
     </div>`;
-}
-
-// Helper: size row with warning highlight
-function sizeRow(size, threshold) {
-  const formattedSize = formatFileSize(size);
-  const sizeKb = size / 1024;
-  const isLarge = threshold && sizeKb > threshold;
-  const value = isLarge
-    ? `<span class="warning-text" title="Threshold: ${threshold} KB">${formattedSize} ⚠️</span>`
-    : formattedSize;
-
-  return row('File Size', value);
 }
 
 // Helper: name row with finder button
@@ -264,7 +252,6 @@ export async function renderImageVariantProperties(asset, filename, uri, scale, 
 // Render general properties for asset
 export function renderProperties(asset, vscode) {
   const panel = document.getElementById('propertiesPanel');
-  const threshold = window.assetsData.config?.largeAssetThreshold;
   let html = '';
 
   if (asset.type === 'image') {
@@ -277,7 +264,6 @@ export function renderProperties(asset, vscode) {
 
     html = section('Image Set', `
       ${nameRow(asset.name, asset.path)}
-      ${sizeRow(asset.size || 0, threshold)}
       ${row('Render As', renderAsText)}
       <div class="property-row align-top">
         <span class="property-row-label">Resizing</span>
@@ -311,7 +297,6 @@ export function renderProperties(asset, vscode) {
 
     html = section('App Icon', `
       ${nameRow(asset.name, asset.path)}
-      ${sizeRow(asset.size || 0, threshold)}
       ${row('iOS', getPlatformValue('ios', true))}
       ${row('macOS', getPlatformValue('macos', false))}
       ${row('watchOS', getPlatformValue('watchos', true))}
@@ -321,7 +306,6 @@ export function renderProperties(asset, vscode) {
 
     html = section('Color Set', `
       ${nameRow(asset.name, asset.path)}
-      ${sizeRow(asset.size || 0, threshold)}
       <div class="property-row align-top">
         <span class="property-row-label">Devices</span>
         <div style="font-size: 12px; line-height: 1.5;">${renderDevicesHtml(idioms)}</div>
@@ -330,10 +314,7 @@ export function renderProperties(asset, vscode) {
       ${row('Gamut', getGamut(asset.colors))}
     `);
   } else if (asset.type === 'data') {
-    html = section('Data Set', `
-      ${nameRow(asset.name, asset.path)}
-      ${sizeRow(asset.size || 0, threshold)}
-    `);
+    html = section('Data Set', nameRow(asset.name, asset.path));
   } else if (asset.type === 'folder') {
     html = section('Folder', nameRow(asset.name, asset.path));
   }
