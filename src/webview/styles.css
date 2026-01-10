@@ -84,6 +84,10 @@ body {
   display: flex;
   align-items: center;
 }
+.warning-text {
+  color: var(--vscode-notificationsWarningIcon-foreground);
+  font-weight: 600;
+}
 .asset-list-item:focus,
 .asset-list-item:focus-visible {
   outline: 2px solid var(--vscode-focusBorder);
