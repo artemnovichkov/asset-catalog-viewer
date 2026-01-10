@@ -6,7 +6,7 @@
 - [x] **Task 2: Pass Configuration to Webview** <!-- ca65125 -->
     - Update `src/xcassetsViewer.ts` to read the threshold setting and include it in the initial state sent to the webview.
     - Listen for configuration changes and post a message to the webview when the threshold is updated.
-- [ ] **Task: Conductor - User Manual Verification 'Infrastructure & Configuration' (Protocol in workflow.md)**
+- [x] **Task: Conductor - User Manual Verification 'Infrastructure & Configuration' (Protocol in workflow.md)****
 
 ## Phase 2: Data Model & Parsing
 - [ ] **Task 1: Calculate Asset Sizes**
