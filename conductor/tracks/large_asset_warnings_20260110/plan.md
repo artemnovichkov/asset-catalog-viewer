@@ -1,6 +1,6 @@
 # Plan: Large Asset Warnings
 
-## Phase 1: Infrastructure & Configuration
+## Phase 1: Infrastructure & Configuration [checkpoint: d7b1fbd]
 - [x] **Task 1: Add Extension Setting** <!-- 5463e71 -->
     - Update `package.json` to include the `xcassetsViewer.largeAssetThreshold` setting with a default value of 500.
 - [x] **Task 2: Pass Configuration to Webview** <!-- ca65125 -->
