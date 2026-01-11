@@ -12,7 +12,7 @@
     - Add a "Code Snippets" container to the properties panel in `src/webview/template.html`.
 - [x] Task: Style the Snippets Section a3806f8
     - Add CSS rules in `src/webview/styles.css` for the snippet container and copy button.
-- [ ] Task: Implement Snippet Rendering Logic
+- [x] Task: Implement Snippet Rendering Logic 14e3d8a
     - Update `src/webview/properties.js` (or relevant script) to generate and display the SwiftUI snippet when an asset is selected.
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Webview UI Implementation' (Protocol in workflow.md)
 
