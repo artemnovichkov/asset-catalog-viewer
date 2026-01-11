@@ -181,6 +181,26 @@ function renderSnippets(asset) {
       </div>
     </div>
   `;
+
+  // Add click handler for copy button
+  const copyBtn = document.getElementById('copySnippetBtn');
+  if (copyBtn) {
+    copyBtn.addEventListener('click', () => {
+      const codeToCopy = copyBtn.dataset.code;
+      if (codeToCopy) {
+        navigator.clipboard.writeText(codeToCopy).then(() => {
+          // Visual feedback
+          copyBtn.classList.add('copied');
+          const originalIcon = copyBtn.innerHTML;
+          copyBtn.innerHTML = '<i class="codicon codicon-check"></i>';
+          setTimeout(() => {
+            copyBtn.classList.remove('copied');
+            copyBtn.innerHTML = originalIcon;
+          }, 2000);
+        });
+      }
+    });
+  }
 }
 
 // Render color properties for specific variant
