@@ -17,7 +17,7 @@
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Webview UI Implementation' (Protocol in workflow.md)
 
 ## Phase 3: Interactivity & Copy Logic
-- [ ] Task: Implement Copy to Clipboard
+- [x] Task: Implement Copy to Clipboard 9f7789b
     - Add event listeners and logic in `src/webview/utils.js` or `src/webview/properties.js` to handle clicking the copy button.
 - [ ] Task: Add Copy Feedback UI
     - Implement a visual confirmation (e.g., tooltip or button text change) when a snippet is copied.
