@@ -607,3 +607,50 @@ body {
 .lottie-speed-select:focus {
   outline: 1px solid var(--vscode-focusBorder);
 }
+
+/* Code Snippets */
+.snippets-section {
+  border-top: 1px solid var(--vscode-panel-border);
+  padding-top: 16px;
+  margin-top: 16px;
+}
+.snippet-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border);
+  border-radius: 3px;
+  padding: 4px 8px;
+  margin-top: 8px;
+}
+.snippet-code {
+  flex: 1;
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--vscode-textPreformat-foreground);
+}
+.copy-button {
+  background: none;
+  border: none;
+  color: var(--vscode-foreground);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+.copy-button:hover {
+  opacity: 1;
+  background-color: var(--vscode-list-hoverBackground);
+}
+.copy-button.copied {
+  color: var(--vscode-testing-iconPassed);
+  opacity: 1;
+}
