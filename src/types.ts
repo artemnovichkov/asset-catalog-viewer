@@ -108,7 +108,7 @@ export interface ConvertedAppIconVariant {
 }
 
 export type ConvertedAssetItem =
-  | { type: 'folder'; name: string; path: string; children: ConvertedAssetItem[] }
+  | { type: 'folder'; name: string; path: string; children: ConvertedAssetItem[]; providesNamespace?: boolean }
   | { type: 'image'; name: string; path: string; size: number; images: ConvertedImageVariant[]; templateRenderingIntent?: string; preservesVectorRepresentation?: boolean }
   | { type: 'color'; name: string; path: string; size: number; colors: ColorDefinition[] }
   | { type: 'data'; name: string; path: string; size: number; data: ConvertedDataItem[] }
@@ -129,6 +129,7 @@ export interface AssetItem {
   dataSet?: DataSet;
   appIconSet?: AppIconSet;
   children?: AssetItem[];
+  providesNamespace?: boolean;
 }
 
 export interface ImageSet {

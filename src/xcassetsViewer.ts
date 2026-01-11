@@ -168,7 +168,8 @@ export class XCAssetsViewer {
             type: 'folder' as const,
             name: item.name,
             path: item.path || '',
-            children: item.children ? convertItems(item.children) : []
+            children: item.children ? convertItems(item.children) : [],
+            providesNamespace: item.providesNamespace
           };
         } else if (item.type === 'imageset' && item.imageSet) {
           return {

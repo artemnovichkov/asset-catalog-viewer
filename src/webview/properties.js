@@ -400,7 +400,16 @@ export function renderProperties(asset, vscode) {
   } else if (asset.type === 'data') {
     html = section('Data Set', nameRow(asset.name, asset.path));
   } else if (asset.type === 'folder') {
-    html = section('Folder', nameRow(asset.name, asset.path));
+    const checked = asset.providesNamespace ? '☑' : '☐';
+    html = section('Folder', `
+      ${nameRow(asset.name, asset.path)}
+      <div class="property-row align-top">
+        <span class="property-row-label">Namespace</span>
+        <div style="font-size: 12px; line-height: 1.5; padding: 2px 0;">
+           ${checked} Provides Namespace
+        </div>
+      </div>
+    `);
   }
 
   render(panel, html, vscode);

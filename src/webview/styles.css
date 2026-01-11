@@ -102,6 +102,9 @@ body {
 .asset-list-item.folder {
   font-weight: 500;
 }
+.asset-list-item.folder.provides-namespace .asset-icon {
+  color: #4DAAFC;
+}
 .folder-chevron {
   font-size: 16px;
   transition: transform 0.2s;

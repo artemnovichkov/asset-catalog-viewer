@@ -26,8 +26,9 @@ export async function renderAssetList(assetsData, vscode) {
       if (item.type === 'folder') {
         const isExpanded = expandedFolders.has(itemPath);
         const chevronClass = isExpanded ? 'expanded' : '';
+        const namespaceClass = item.providesNamespace ? ' provides-namespace' : '';
         html += `
-          <div class="asset-list-item folder" data-index="${assetIndex}" data-folder-path="${itemPath}" data-path="${item.path || ''}" style="padding-left: ${indent + 8}px;" title="${escapeHtml(item.name)}">
+          <div class="asset-list-item folder${namespaceClass}" data-index="${assetIndex}" data-folder-path="${itemPath}" data-path="${item.path || ''}" style="padding-left: ${indent + 8}px;" title="${escapeHtml(item.name)}">
             <i class="codicon codicon-chevron-right folder-chevron ${chevronClass}"></i>
             <i class="codicon codicon-folder asset-icon"></i>
             <span>${escapeHtml(item.name)}</span>

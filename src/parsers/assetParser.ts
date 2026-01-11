@@ -111,9 +111,20 @@ export class AssetParser {
         }
         return { type: 'dataset', name: dataSet.name, path: entryPath, dataSet, size };
       } else {
-        // Regular folder - recurse into it
+        // Regular folder - check for Contents.json and recurse
         const children = await this.parseDirectory(entryPath, depth + 1, root);
-        return { type: 'folder', name: entry.name, path: entryPath, children };
+        let providesNamespace = false;
+        try {
+          const contentsPath = path.join(entryPath, 'Contents.json');
+          const content = await fs.promises.readFile(contentsPath, 'utf8');
+          const json = JSON.parse(content);
+          if (json.properties && json.properties['provides-namespace']) {
+            providesNamespace = true;
+          }
+        } catch (e) {
+          // Ignore if Contents.json doesn't exist or is invalid
+        }
+        return { type: 'folder', name: entry.name, path: entryPath, children, providesNamespace };
       }
     });
 
