@@ -145,6 +145,44 @@ function render(panel, html, vscode) {
   addFinderButtonHandler(panel, vscode);
 }
 
+// Helper: render SwiftUI snippets
+function renderSnippets(asset) {
+  const snippetsPanel = document.getElementById('snippetsPanel');
+  if (!snippetsPanel) return;
+
+  const templates = window.assetsData?.config?.templates;
+  if (!templates) {
+    snippetsPanel.innerHTML = '';
+    return;
+  }
+
+  let template = '';
+  if (asset.type === 'color') {
+    template = templates.color;
+  } else if (asset.type === 'image') {
+    template = templates.image;
+  }
+
+  if (!template) {
+    snippetsPanel.innerHTML = '';
+    return;
+  }
+
+  const code = template.replace('{name}', asset.name);
+
+  snippetsPanel.innerHTML = `
+    <div class="snippets-section">
+      <div class="property-title">SwiftUI Code Snippets</div>
+      <div class="snippet-container">
+        <code class="snippet-code">${escapeHtml(code)}</code>
+        <button class="copy-button" id="copySnippetBtn" title="Copy to clipboard" data-code="${escapeHtml(code)}">
+          <i class="codicon codicon-copy"></i>
+        </button>
+      </div>
+    </div>
+  `;
+}
+
 // Render color properties for specific variant
 export function renderColorProperties(asset, colorIndex, vscode) {
   const panel = document.getElementById('propertiesPanel');
@@ -181,6 +219,7 @@ export function renderColorProperties(asset, colorIndex, vscode) {
   `;
 
   render(panel, html, vscode);
+  renderSnippets(asset);
 }
 
 // Render app icon variant properties
@@ -209,6 +248,7 @@ export async function renderAppIconVariantProperties(asset, filename, uri, size,
   `;
 
   render(panel, html, vscode);
+  renderSnippets(asset);
 }
 
 // Render image variant properties
@@ -247,6 +287,7 @@ export async function renderImageVariantProperties(asset, filename, uri, scale, 
   `;
 
   render(panel, html, vscode);
+  renderSnippets(asset);
 }
 
 // Render general properties for asset
@@ -320,4 +361,5 @@ export function renderProperties(asset, vscode) {
   }
 
   render(panel, html, vscode);
+  renderSnippets(asset);
 }

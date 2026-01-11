@@ -30,6 +30,8 @@ export function deselectAsset() {
 
   document.getElementById('previewPanel').innerHTML = '<div class="empty-state">No Selection</div>';
   document.getElementById('propertiesPanel').innerHTML = '<div class="empty-state">No asset selected</div>';
+  const snippetsPanel = document.getElementById('snippetsPanel');
+  if (snippetsPanel) snippetsPanel.innerHTML = '';
 }
 
 // Deselect variant within current asset
