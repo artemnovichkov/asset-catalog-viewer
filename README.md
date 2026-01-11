@@ -31,6 +31,7 @@ A VS Code and Cursor extension that provides an Xcode-like interface for preview
 - **Asset Management** - Rename and delete assets or folders directly from the interface
 - **Search Filter** - Filter assets by name in real-time across all folders
 - **Large Asset Detection** - Identify heavy assets with visual warning indicators (⚠️) in the sidebar
+- **SwiftUI Code Snippets** - Quick copy resource accessors (e.g., `Color(.brand)`) for Color and Image sets
 - **Variant Selection** - Click on individual image/color variants to see detailed properties
 - **Quick Look** - Press Space to open selected assets in macOS Quick Look
 - **Show in Finder** - Right-click any asset to reveal it in Finder
