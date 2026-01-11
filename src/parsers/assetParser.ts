@@ -113,10 +113,7 @@ export class AssetParser {
       } else {
         // Regular folder - recurse into it
         const children = await this.parseDirectory(entryPath, depth + 1, root);
-        if (children.length > 0) {
-          return { type: 'folder', name: entry.name, path: entryPath, children };
-        }
-        return null;
+        return { type: 'folder', name: entry.name, path: entryPath, children };
       }
     });
 
