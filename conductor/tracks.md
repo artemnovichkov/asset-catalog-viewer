@@ -6,8 +6,3 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## [x] Track: Add warnings for large assets. Add ability for users to changes large size via extension settings
 *Link: [./conductor/tracks/large_asset_warnings_20260110/](./conductor/tracks/large_asset_warnings_20260110/)*
-
----
-
-## [~] Track: Show SwiftUI code sample for color/icon using with ability to copy samples
-*Link: [./conductor/tracks/swiftui_code_samples_20260111/](./conductor/tracks/swiftui_code_samples_20260111/)*
