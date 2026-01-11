@@ -107,7 +107,7 @@ function row(label, value, opts = {}) {
 // Helper: name row with finder button
 function nameRow(name, path) {
   return `
-    <div class="property-row">
+    <div class="property-row align-top">
       <span class="property-row-label">Name</span>
       <div class="property-row-value" style="flex: 1;">${escapeHtml(name)}</div>
       <button class="finder-button" data-path="${path}">

@@ -27,7 +27,7 @@ export async function renderAssetList(assetsData, vscode) {
         const isExpanded = expandedFolders.has(itemPath);
         const chevronClass = isExpanded ? 'expanded' : '';
         html += `
-          <div class="asset-list-item folder" data-index="${assetIndex}" data-folder-path="${itemPath}" data-path="${item.path || ''}" style="padding-left: ${indent + 8}px;">
+          <div class="asset-list-item folder" data-index="${assetIndex}" data-folder-path="${itemPath}" data-path="${item.path || ''}" style="padding-left: ${indent + 8}px;" title="${escapeHtml(item.name)}">
             <i class="codicon codicon-chevron-right folder-chevron ${chevronClass}"></i>
             <i class="codicon codicon-folder asset-icon"></i>
             <span>${escapeHtml(item.name)}</span>
@@ -86,7 +86,7 @@ export async function renderAssetList(assetsData, vscode) {
           }
         }
 
-        html += `<div class="asset-list-item" data-index="${assetIndex}" data-path="${item.path || ''}" style="padding-left: ${indent + 24 + 8}px;">
+        html += `<div class="asset-list-item" data-index="${assetIndex}" data-path="${item.path || ''}" style="padding-left: ${indent + 24 + 8}px;" title="${escapeHtml(item.name)}">
           ${iconHtml}
           <span>${escapeHtml(item.name)}</span>
           ${warningHtml}

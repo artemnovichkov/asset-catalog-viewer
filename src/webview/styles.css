@@ -36,6 +36,7 @@ body {
 .asset-list-container {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 .filter-container {
   padding: 8px;
@@ -68,6 +69,14 @@ body {
   gap: 6px;
   user-select: none;
   outline: none;
+  min-width: 0;
+}
+.asset-list-item span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
 }
 .asset-list-item:hover {
   background-color: var(--vscode-list-hoverBackground);
@@ -83,6 +92,7 @@ body {
   cursor: help;
   display: flex;
   align-items: center;
+  flex-shrink: 0;
 }
 .asset-list-item:focus,
 .asset-list-item:focus-visible {
@@ -383,6 +393,8 @@ body {
   border: 1px solid var(--vscode-input-border);
   border-radius: 3px;
   font-size: 12px;
+  overflow-wrap: anywhere;
+  min-width: 0;
 }
 .property-value-with-button {
   display: flex;
