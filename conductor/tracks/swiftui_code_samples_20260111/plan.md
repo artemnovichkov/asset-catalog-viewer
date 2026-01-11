@@ -19,7 +19,7 @@
 ## Phase 3: Interactivity & Copy Logic
 - [x] Task: Implement Copy to Clipboard 9f7789b
     - Add event listeners and logic in `src/webview/utils.js` or `src/webview/properties.js` to handle clicking the copy button.
-- [ ] Task: Add Copy Feedback UI
+- [x] Task: Add Copy Feedback UI 9f7789b
     - Implement a visual confirmation (e.g., tooltip or button text change) when a snippet is copied.
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Interactivity & Copy Logic' (Protocol in workflow.md)
 
