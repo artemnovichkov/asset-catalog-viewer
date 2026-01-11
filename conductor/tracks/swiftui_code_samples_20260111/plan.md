@@ -8,7 +8,7 @@
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Foundation & Data Model' (Protocol in workflow.md)
 
 ## Phase 2: Webview UI Implementation
-- [ ] Task: Update HTML Template
+- [x] Task: Update HTML Template a02274b
     - Add a "Code Snippets" container to the properties panel in `src/webview/template.html`.
 - [ ] Task: Style the Snippets Section
     - Add CSS rules in `src/webview/styles.css` for the snippet container and copy button.
