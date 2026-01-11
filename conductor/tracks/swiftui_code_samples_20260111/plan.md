@@ -1,6 +1,6 @@
 # Plan: SwiftUI Resource Accessor Samples
 
-## Phase 1: Foundation & Data Model
+## Phase 1: Foundation & Data Model [checkpoint: 94eb6ac]
 - [x] Task: Define Snippet Templates d62b31e
     - Define constants for the SwiftUI snippet templates in `src/constants.ts` or a new utility file.
 - [x] Task: Extend Asset Types da394ca
