@@ -178,7 +178,12 @@ function renderSnippets(asset) {
     return;
   }
 
-  const camelName = toCamelCase(asset.name);
+  let name = asset.name;
+  // Remove suffixes like "Color", "Icon", "Image" (case-insensitive)
+  // We do this before camelCasing to keep the logic clean
+  name = name.replace(/(?:Color|Icon|Image)$/i, '');
+
+  const camelName = toCamelCase(name);
   const code = template.replace('{name}', camelName);
 
   snippetsPanel.innerHTML = `
