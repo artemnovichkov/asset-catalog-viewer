@@ -7,7 +7,7 @@
     - Ensure the internal asset data structures correctly identify `.colorset` and `.imageset` for the webview.
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Foundation & Data Model' (Protocol in workflow.md)
 
-## Phase 2: Webview UI Implementation
+## Phase 2: Webview UI Implementation [checkpoint: 9b80d97]
 - [x] Task: Update HTML Template a02274b
     - Add a "Code Snippets" container to the properties panel in `src/webview/template.html`.
 - [x] Task: Style the Snippets Section a3806f8
