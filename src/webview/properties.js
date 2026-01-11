@@ -171,6 +171,8 @@ function renderSnippets(asset) {
     template = templates.color;
   } else if (asset.type === 'image') {
     template = templates.image;
+  } else if (asset.type === 'data') {
+    template = templates.data;
   }
 
   if (!template) {
@@ -179,12 +181,17 @@ function renderSnippets(asset) {
   }
 
   let name = asset.name;
-  // Remove suffixes like "Color", "Icon", "Image" (case-insensitive)
-  // We do this before camelCasing to keep the logic clean
-  name = name.replace(/(?:Color|Icon|Image)$/i, '');
+  let processedName;
 
-  const camelName = toCamelCase(name);
-  const code = template.replace('{name}', camelName);
+  if (asset.type === 'data') {
+    processedName = name;
+  } else {
+    // Remove suffixes like "Color", "Icon", "Image" (case-insensitive) for colors and images
+    name = name.replace(/(?:Color|Icon|Image)$/i, '');
+    processedName = toCamelCase(name);
+  }
+
+  const code = template.replace('{name}', processedName);
 
   snippetsPanel.innerHTML = `
     <div class="snippets-section">

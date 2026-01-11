@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { AssetParser } from './parsers/assetParser';
-import { MAX_DIRECTORY_DEPTH, SWIFTUI_COLOR_TEMPLATE, SWIFTUI_IMAGE_TEMPLATE } from './constants';
+import { MAX_DIRECTORY_DEPTH, SWIFTUI_COLOR_TEMPLATE, SWIFTUI_IMAGE_TEMPLATE, NSDATA_ASSET_TEMPLATE } from './constants';
 import {
   AssetCatalog,
   AssetItem,
@@ -237,7 +237,8 @@ export class XCAssetsViewer {
         largeAssetThreshold,
         templates: {
           color: SWIFTUI_COLOR_TEMPLATE,
-          image: SWIFTUI_IMAGE_TEMPLATE
+          image: SWIFTUI_IMAGE_TEMPLATE,
+          data: NSDATA_ASSET_TEMPLATE
         }
       }
     };
