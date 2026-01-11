@@ -26,6 +26,8 @@
 ## Phase 4: Finalization
 - [x] Task: Refine Snippet Generation (CamelCase) ffca64f
     - Update logic to convert asset names to camelCase for snippets (e.g., `brand-color` -> `brandColor`).
+- [x] Task: Refine Snippet Generation (Remove Redundant Suffixes) 292bfdd
+    - Remove "Color", "Icon", "Image" suffixes from asset names before generating snippets (e.g., `BrandColor` -> `brand`, `swiftIcon` -> `swift`).
 - [x] Task: End-to-End Testing 3538c6e
     - Verify all asset types and ensure snippets only appear for Colors and Images.
 - [x] Task: Code Cleanup & Documentation 8e4e777
