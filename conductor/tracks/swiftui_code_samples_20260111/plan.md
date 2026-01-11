@@ -3,7 +3,7 @@
 ## Phase 1: Foundation & Data Model
 - [x] Task: Define Snippet Templates d62b31e
     - Define constants for the SwiftUI snippet templates in `src/constants.ts` or a new utility file.
-- [ ] Task: Extend Asset Types
+- [x] Task: Extend Asset Types da394ca
     - Ensure the internal asset data structures correctly identify `.colorset` and `.imageset` for the webview.
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Foundation & Data Model' (Protocol in workflow.md)
 
