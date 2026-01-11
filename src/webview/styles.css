@@ -618,10 +618,6 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  background-color: var(--vscode-input-background);
-  border: 1px solid var(--vscode-input-border);
-  border-radius: 3px;
-  padding: 4px 8px;
   margin-top: 8px;
 }
 .snippet-code {
@@ -632,6 +628,10 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   color: var(--vscode-textPreformat-foreground);
+  background-color: var(--vscode-textCodeBlock-background);
+  border: 1px solid var(--vscode-textCodeBlock-border);
+  border-radius: 3px;
+  padding: 4px 8px;
 }
 .copy-button {
   background: none;
