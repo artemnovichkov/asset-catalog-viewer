@@ -145,6 +145,16 @@ function render(panel, html, vscode) {
   addFinderButtonHandler(panel, vscode);
 }
 
+// Helper: convert string to camelCase (e.g. "brand-color" -> "brandColor", "My Icon" -> "myIcon")
+function toCamelCase(str) {
+  return str
+    .replace(/[^a-zA-Z0-9]/g, ' ') // Replace non-alphanumeric with space
+    .replace(/(?:^\w|[A-Z]|\b\w)/g, (word, index) => {
+      return index === 0 ? word.toLowerCase() : word.toUpperCase();
+    })
+    .replace(/\s+/g, '');
+}
+
 // Helper: render SwiftUI snippets
 function renderSnippets(asset) {
   const snippetsPanel = document.getElementById('snippetsPanel');
@@ -168,7 +178,8 @@ function renderSnippets(asset) {
     return;
   }
 
-  const code = template.replace('{name}', asset.name);
+  const camelName = toCamelCase(asset.name);
+  const code = template.replace('{name}', camelName);
 
   snippetsPanel.innerHTML = `
     <div class="snippets-section">
