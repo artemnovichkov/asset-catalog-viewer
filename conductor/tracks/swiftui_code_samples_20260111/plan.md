@@ -16,7 +16,7 @@
     - Update `src/webview/properties.js` (or relevant script) to generate and display the SwiftUI snippet when an asset is selected.
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Webview UI Implementation' (Protocol in workflow.md)
 
-## Phase 3: Interactivity & Copy Logic
+## Phase 3: Interactivity & Copy Logic [checkpoint: 118d31b]
 - [x] Task: Implement Copy to Clipboard 9f7789b
     - Add event listeners and logic in `src/webview/utils.js` or `src/webview/properties.js` to handle clicking the copy button.
 - [x] Task: Add Copy Feedback UI 9f7789b
