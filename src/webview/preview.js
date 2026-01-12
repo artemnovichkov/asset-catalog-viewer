@@ -24,7 +24,7 @@ function groupBy(items, keyFn) {
 function emptySlot(label, type = 'image') {
   const slotClass = type === 'color' ? 'color-slot' : 'image-slot';
   return `
-    <div style="display: flex; flex-direction: column; align-items: center;">
+    <div class="slot-item">
       <div class="${slotClass} empty"><span class="plus-icon">+</span></div>
       <div class="slot-label">${label}</div>
     </div>`;

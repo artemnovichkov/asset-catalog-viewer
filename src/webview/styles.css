@@ -227,14 +227,19 @@ body {
   gap: 20px;
 }
 .appearance-scale-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 120px);
+  gap: 20px 40px;
+  justify-content: center;
+}
+.appearance-scale-grid > .appearance-row {
+  display: contents;
+}
+.appearance-scale-grid .appearance-row > div {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-}
-.appearance-row {
-  display: flex;
-  gap: 40px;
-  justify-content: center;
+  align-items: center;
+  width: 120px;
 }
 .image-slot {
   width: 90px;
@@ -315,11 +320,17 @@ body {
   margin: 0 auto;
   opacity: 0.5;
 }
-.variant-item {
+.variant-item,
+.slot-item {
   border-radius: 6px;
-  cursor: pointer;
   border: 3px solid transparent;
   padding: 8px 8px 0 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.variant-item {
+  cursor: pointer;
 }
 .variant-item.selected {
   border-color: var(--vscode-focusBorder);
@@ -331,22 +342,24 @@ body {
   margin: 0;
 }
 .variant-item .preview-label,
-.variant-item .slot-label {
-  margin: 8px 0 0 0;
-  padding: 4px 8px;
+.variant-item .slot-label,
+.slot-item .slot-label {
+  margin: 8px -11px 0 -11px;
+  padding: 4px 11px;
   display: block;
-  width: 100%;
+  width: calc(100% + 22px);
   box-sizing: border-box;
+  text-align: center;
+  line-height: 1.4;
+  min-height: calc(2em * 1.4 + 8px);
 }
 .variant-item.selected .preview-label,
 .variant-item.selected .slot-label {
   background-color: var(--vscode-focusBorder);
   color: white;
   font-weight: 600;
-  margin: 8px -11px -3px -11px;
-  padding: 4px 11px;
+  margin-bottom: -3px;
   border-radius: 0 0 3px 3px;
-  width: calc(100% + 22px);
 }
 .pdf-preview-canvas {
   border: 1px solid var(--vscode-panel-border);
