@@ -310,6 +310,7 @@ export async function renderImageVariantProperties(asset, filename, uri, scale, 
     ${section('Image Set', `
       ${nameRow(asset.name, asset.path)}
       ${row('Render As', renderAsText)}
+      ${row('Compression', getCompressionText(asset.compressionType))}
       <div class="property-row align-top">
         <span class="property-row-label">Resizing</span>
         <div style="font-size: 12px; line-height: 1.5;">
@@ -334,6 +335,18 @@ export async function renderImageVariantProperties(asset, filename, uri, scale, 
   renderSnippets(asset);
 }
 
+// Helper: get compression text
+function getCompressionText(compressionType) {
+  switch (compressionType) {
+    case 'automatic': return 'Automatic';
+    case 'lossless': return 'Lossless';
+    case 'lossy': return 'Basic';
+    case 'gpu-optimized-best': return 'GPU Best Quality';
+    case 'gpu-optimized-smallest': return 'GPU Smallest Size';
+    default: return 'Inherited (Automatic)';
+  }
+}
+
 // Render general properties for asset
 export function renderProperties(asset, vscode) {
   const panel = document.getElementById('propertiesPanel');
@@ -350,6 +363,7 @@ export function renderProperties(asset, vscode) {
     html = section('Image Set', `
       ${nameRow(asset.name, asset.path)}
       ${row('Render As', renderAsText)}
+      ${row('Compression', getCompressionText(asset.compressionType))}
       <div class="property-row align-top">
         <span class="property-row-label">Resizing</span>
         <div style="font-size: 12px; line-height: 1.5;">

@@ -13,6 +13,7 @@ export interface ImageContents {
   properties?: {
     'template-rendering-intent'?: string;
     'preserves-vector-representation'?: boolean;
+    'compression-type'?: string;
   };
 }
 
@@ -114,7 +115,7 @@ export interface ConvertedAppIconVariant {
 
 export type ConvertedAssetItem =
   | { type: 'folder'; name: string; path: string; children: ConvertedAssetItem[]; providesNamespace?: boolean }
-  | { type: 'image'; name: string; path: string; size: number; images: ConvertedImageVariant[]; templateRenderingIntent?: string; preservesVectorRepresentation?: boolean }
+  | { type: 'image'; name: string; path: string; size: number; images: ConvertedImageVariant[]; templateRenderingIntent?: string; preservesVectorRepresentation?: boolean; compressionType?: string }
   | { type: 'color'; name: string; path: string; size: number; colors: ColorDefinition[] }
   | { type: 'data'; name: string; path: string; size: number; data: ConvertedDataItem[] }
   | { type: 'appicon'; name: string; path: string; size: number; icons: ConvertedAppIconVariant[] };
@@ -142,6 +143,7 @@ export interface ImageSet {
   images: ImageVariant[];
   templateRenderingIntent?: string;
   preservesVectorRepresentation?: boolean;
+  compressionType?: string;
 }
 
 export interface ImageVariant {

@@ -177,6 +177,7 @@ export class AssetParser {
       images,
       templateRenderingIntent: contents.properties?.['template-rendering-intent'],
       preservesVectorRepresentation: contents.properties?.['preserves-vector-representation'],
+      compressionType: contents.properties?.['compression-type'],
     };
   }
 

@@ -183,7 +183,8 @@ export class XCAssetsViewer {
               fsPath: img.path
             })),
             templateRenderingIntent: item.imageSet.templateRenderingIntent,
-            preservesVectorRepresentation: item.imageSet.preservesVectorRepresentation
+            preservesVectorRepresentation: item.imageSet.preservesVectorRepresentation,
+            compressionType: item.imageSet.compressionType
           };
         } else if (item.type === 'colorset' && item.colorSet) {
           return {
