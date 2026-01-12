@@ -5,6 +5,10 @@ export interface ImageContents {
     scale?: string;
     idiom?: string;
     subtype?: string;
+    appearances?: Array<{
+      appearance: string;
+      value: string;
+    }>;
   }>;
   properties?: {
     'template-rendering-intent'?: string;
@@ -61,6 +65,7 @@ export interface ConvertedImageVariant {
   path: string;
   uri: string;
   fsPath: string;
+  appearances?: AppearanceVariant[];
 }
 
 export interface ColorDefinition {
@@ -145,6 +150,7 @@ export interface ImageVariant {
   idiom: string;
   subtype?: string;
   path: string;
+  appearances?: AppearanceVariant[];
 }
 
 export interface ColorSet {

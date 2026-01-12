@@ -168,6 +168,7 @@ export class AssetParser {
         idiom: image.idiom || 'universal',
         subtype: image.subtype,
         path: imagePath || '',
+        appearances: image.appearances,
       });
     }
 

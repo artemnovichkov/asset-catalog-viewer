@@ -220,6 +220,22 @@ body {
   justify-content: center;
   margin-bottom: 20px;
 }
+.appearance-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+.appearance-scale-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.appearance-row {
+  display: flex;
+  gap: 40px;
+  justify-content: center;
+}
 .image-slot {
   width: 90px;
   height: 90px;

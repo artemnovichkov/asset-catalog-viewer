@@ -39,12 +39,12 @@ function renderDevicesHtml(idioms) {
   return universalHtml + devicesHtml;
 }
 
-// Helper: get appearances text from color items
-function getAppearancesText(colorItems) {
+// Helper: get appearances text from items with appearances array
+function getAppearancesText(items) {
   const hasLuminosity = new Set();
   const hasContrast = new Set();
 
-  colorItems.forEach(item => {
+  items.forEach(item => {
     (item.appearances || []).forEach(app => {
       if (app.appearance === 'luminosity') hasLuminosity.add(app.value);
       else if (app.appearance === 'contrast') hasContrast.add(app.value);
@@ -320,6 +320,7 @@ export async function renderImageVariantProperties(asset, filename, uri, scale, 
         <span class="property-row-label">Devices</span>
         <div style="font-size: 12px; line-height: 1.5;">${renderDevicesHtml(idioms)}</div>
       </div>
+      ${row('Appearances', getAppearancesText(asset.images))}
       ${row('Scales', scalesText)}
     `)}
     ${section('Image', `
@@ -359,6 +360,7 @@ export function renderProperties(asset, vscode) {
         <span class="property-row-label">Devices</span>
         <div style="font-size: 12px; line-height: 1.5;">${renderDevicesHtml(idioms)}</div>
       </div>
+      ${row('Appearances', getAppearancesText(asset.images))}
       ${row('Scales', scalesText)}
     `);
   } else if (asset.type === 'appicon') {

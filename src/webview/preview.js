@@ -98,20 +98,68 @@ function imageSlot(img, label) {
     </div>`;
 }
 
+// Find image by appearance and optional scale
+function findImageByAppearance(images, appearanceKey, scale = null) {
+  return images.find(i => {
+    const matchesAppearance = appearanceKey === 'any'
+      ? (!i.appearances || i.appearances.length === 0)
+      : i.appearances?.some(a => a.appearance === 'luminosity' && a.value === appearanceKey);
+    const matchesScale = scale ? i.scale === scale : true;
+    return matchesAppearance && matchesScale;
+  });
+}
+
 async function renderImagePreview(asset, panel, vscode) {
   const idiomOrder = ['universal', 'iphone', 'ipad', 'mac-catalyst', 'mac', 'vision', 'watch', 'tv'];
   const idiomGroups = groupBy(asset.images, img => img.subtype === 'mac-catalyst' ? 'mac-catalyst' : img.idiom);
+
+  // Check if images use appearances and/or scales
+  const hasAppearances = asset.images.some(i => i.appearances && i.appearances.length > 0);
+  const hasScales = asset.images.some(i => i.scale);
 
   const groupsHtml = idiomOrder
     .filter(idiom => idiomGroups[idiom])
     .map(idiom => {
       const images = idiomGroups[idiom];
-      const isSingleUniversal = idiom === 'universal' && images.length === 1 && images[0].filename && !images[0].scale;
+      const isSingleUniversal = idiom === 'universal' && images.length === 1 && images[0].filename && !images[0].scale && !hasAppearances;
 
       let slotsHtml;
       if (isSingleUniversal) {
         slotsHtml = imageSlot(images[0], 'All');
+      } else if (hasAppearances && hasScales) {
+        // Grid: rows = appearances, columns = scales
+        const hasLight = images.some(i => i.appearances?.some(a => a.appearance === 'luminosity' && a.value === 'light'));
+        const hasDark = images.some(i => i.appearances?.some(a => a.appearance === 'luminosity' && a.value === 'dark'));
+
+        const appearances = [{ key: 'any', label: 'Any Appearance' }];
+        if (hasLight) appearances.push({ key: 'light', label: 'Light' });
+        if (hasDark) appearances.push({ key: 'dark', label: 'Dark' });
+
+        const scales = ['1x', '2x', '3x'];
+
+        slotsHtml = `<div class="appearance-scale-grid">${appearances.map(({ key, label }) => {
+          const rowHtml = scales.map(scale => {
+            const img = findImageByAppearance(images, key, scale);
+            const slotLabel = `${scale}<br>${label}`;
+            return img?.filename ? imageSlot(img, slotLabel) : emptySlot(slotLabel);
+          }).join('');
+          return `<div class="appearance-row">${rowHtml}</div>`;
+        }).join('')}</div>`;
+      } else if (hasAppearances) {
+        // Appearance-only (no scales) - vertical stack
+        const hasLight = images.some(i => i.appearances?.some(a => a.appearance === 'luminosity' && a.value === 'light'));
+        const hasDark = images.some(i => i.appearances?.some(a => a.appearance === 'luminosity' && a.value === 'dark'));
+
+        const appearances = [{ key: 'any', label: 'Any Appearance' }];
+        if (hasLight) appearances.push({ key: 'light', label: 'Light' });
+        if (hasDark) appearances.push({ key: 'dark', label: 'Dark' });
+
+        slotsHtml = `<div class="appearance-stack">${appearances.map(({ key, label }) => {
+          const img = findImageByAppearance(images, key);
+          return img?.filename ? imageSlot(img, label) : emptySlot(label);
+        }).join('')}</div>`;
       } else {
+        // Scale-based images (@1x, @2x, @3x)
         slotsHtml = ['1x', '2x', '3x'].map(scale => {
           const img = images.find(i => i.scale === scale);
           return img?.filename ? imageSlot(img, scale) : emptySlot(scale);
