@@ -106,11 +106,11 @@ async function renderFolderPreview(folder, panel, vscode) {
     listContainer.appendChild(childPanel);
 
     if (child.type === 'image') {
-      await renderImagePreviewInContainer(child, childPanel, vscode);
+      await renderImagePreviewInContainer(child, childPanel, panel, vscode);
     } else if (child.type === 'color') {
-      renderColorPreviewInContainer(child, childPanel, vscode);
+      renderColorPreviewInContainer(child, childPanel, panel, vscode);
     } else if (child.type === 'appicon') {
-      renderAppIconPreviewInContainer(child, childPanel, vscode);
+      renderAppIconPreviewInContainer(child, childPanel, panel, vscode);
     } else if (child.type === 'data') {
       renderDataPreviewInContainer(child, childPanel);
     }
@@ -119,7 +119,7 @@ async function renderFolderPreview(folder, panel, vscode) {
 
 // Helper functions to render previews in a specific container
 
-async function renderImagePreviewInContainer(asset, container, vscode) {
+async function renderImagePreviewInContainer(asset, container, mainPanel, vscode) {
   const idiomOrder = ['universal', 'iphone', 'ipad', 'mac-catalyst', 'mac', 'vision', 'watch', 'tv'];
   const idiomGroups = groupBy(asset.images, img => img.subtype === 'mac-catalyst' ? 'mac-catalyst' : img.idiom);
 
@@ -180,9 +180,18 @@ async function renderImagePreviewInContainer(asset, container, vscode) {
   for (const canvas of container.querySelectorAll('canvas[data-preview-pdf]')) {
     await renderPdfToCanvas(canvas.dataset.pdfUrl, canvas, 1, 90, 90);
   }
+
+  // Click handlers for variant selection
+  container.querySelectorAll('.variant-item[data-image-filename]').forEach(item => {
+    item.addEventListener('click', async () => {
+      mainPanel.querySelectorAll('.variant-item').forEach(v => v.classList.remove('selected'));
+      item.classList.add('selected');
+      await renderImageVariantProperties(asset, item.dataset.imageFilename, item.dataset.imageUri, item.dataset.imageScale, vscode);
+    });
+  });
 }
 
-function renderColorPreviewInContainer(asset, container, vscode) {
+function renderColorPreviewInContainer(asset, container, mainPanel, vscode) {
   const idiomGroups = groupBy(asset.colors, c => c.idiom || 'universal');
 
   const idiomHtml = Object.keys(idiomGroups).map(idiom => {
@@ -204,9 +213,18 @@ function renderColorPreviewInContainer(asset, container, vscode) {
   }).join('');
 
   container.innerHTML = previewContainer(asset.name, idiomHtml);
+
+  // Click handlers for color variant selection
+  container.querySelectorAll('.variant-item[data-color-index]').forEach(item => {
+    item.addEventListener('click', () => {
+      mainPanel.querySelectorAll('.variant-item').forEach(v => v.classList.remove('selected'));
+      item.classList.add('selected');
+      renderColorProperties(asset, parseInt(item.dataset.colorIndex), vscode);
+    });
+  });
 }
 
-function renderAppIconPreviewInContainer(asset, container, vscode) {
+function renderAppIconPreviewInContainer(asset, container, mainPanel, vscode) {
   const platformOrder = ['ios', 'macos', 'watchos', 'tvos', 'universal', 'iphone', 'ipad', 'mac', 'watch', 'tv', 'car'];
   const platformGroups = groupBy(asset.icons, i => i.platform || i.idiom || 'other');
 
@@ -239,6 +257,15 @@ function renderAppIconPreviewInContainer(asset, container, vscode) {
     }).join('');
 
   container.innerHTML = previewContainer(asset.name, contentHtml);
+
+  // Click handlers for icon variant selection
+  container.querySelectorAll('.variant-item[data-icon-filename]').forEach(item => {
+    item.addEventListener('click', async () => {
+      mainPanel.querySelectorAll('.variant-item').forEach(v => v.classList.remove('selected'));
+      item.classList.add('selected');
+      await renderAppIconVariantProperties(asset, item.dataset.iconFilename, item.dataset.iconUri, item.dataset.iconSize, item.dataset.iconScale, item.dataset.iconAppearance, vscode);
+    });
+  });
 }
 
 function renderDataPreviewInContainer(asset, container) {
