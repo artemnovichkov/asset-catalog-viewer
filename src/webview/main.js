@@ -73,20 +73,22 @@ setAllAssets(flattenItems(assetsData.items));
     }
   });
 
-  // Delete selected asset
+  // Delete selected assets
   document.addEventListener('keydown', (e) => {
     if ((e.key === 'Delete' || e.key === 'Backspace') && !e.repeat) {
       if (e.target.tagName === 'INPUT' || getIsRenaming()) return;
 
-      if (currentSelectedAssetIndex >= 0) {
+      if (selectedIndices.size > 0) {
         e.preventDefault();
-        const asset = allAssets[currentSelectedAssetIndex];
-        if (asset && asset.path) {
+        const paths = Array.from(selectedIndices)
+          .map(idx => allAssets[idx])
+          .filter(a => a && a.path)
+          .map(a => a.path);
+
+        if (paths.length > 0) {
           vscode.postMessage({
-            command: 'delete',
-            filePath: asset.path,
-            assetName: asset.name,
-            assetType: asset.type
+            command: 'deleteMultiple',
+            filePaths: paths
           });
         }
       }

@@ -206,6 +206,39 @@ export class XCAssetsViewer {
         return;
       }
 
+      if (message.command === 'deleteMultiple') {
+        const { filePaths } = message;
+        const catalogResolved = path.resolve(xcassetsPath);
+
+        // Validate all paths
+        const validPaths: string[] = [];
+        for (const filePath of filePaths) {
+          const resolvedPath = path.resolve(filePath);
+          if (resolvedPath.startsWith(catalogResolved)) {
+            validPaths.push(resolvedPath);
+          }
+        }
+
+        if (validPaths.length === 0) {
+          vscode.window.showErrorMessage('No valid paths to delete');
+          return;
+        }
+
+        try {
+          // Delete all valid paths
+          for (const resolvedPath of validPaths) {
+            await fs.promises.rm(resolvedPath, { recursive: true });
+          }
+
+          // Re-parse and refresh webview
+          const assets = await parser.parse(xcassetsPath);
+          panel.webview.html = await this.getHtmlForWebview(panel.webview, assets);
+        } catch (err: any) {
+          vscode.window.showErrorMessage(`Delete failed: ${err.message}`);
+        }
+        return;
+      }
+
       if (message.command === 'addColorSet') {
         const { targetFolderPath } = message;
 
