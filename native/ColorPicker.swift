@@ -8,6 +8,7 @@ class ColorPickerDelegate: NSObject, NSWindowDelegate {
 
     init(initialColor: NSColor) {
         self.initialColor = initialColor
+        self.lastOutputColor = colorToJSON(initialColor)
         super.init()
     }
 
