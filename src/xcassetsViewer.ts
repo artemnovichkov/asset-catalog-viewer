@@ -39,11 +39,14 @@ export class XCAssetsViewer {
     );
 
     let debounceTimer: NodeJS.Timeout | undefined;
+    let pauseRefresh = false;
     const refresh = async () => {
+      if (pauseRefresh) return;
       if (debounceTimer) {
         clearTimeout(debounceTimer);
       }
       debounceTimer = setTimeout(async () => {
+        if (pauseRefresh) return;
         const updatedAssets = await parser.parse(xcassetsPath);
         panel.webview.html = await this.getHtmlForWebview(panel.webview, updatedAssets);
       }, 300);
@@ -75,7 +78,73 @@ export class XCAssetsViewer {
     });
 
     panel.webview.onDidReceiveMessage(async message => {
-      const { spawn } = require('child_process');
+      const { spawn, execFile } = require('child_process');
+
+      if (message.command === 'showColorPanel') {
+        const { colorSetPath, colorIndex, currentColor } = message;
+
+        // Validate path
+        const resolvedPath = path.resolve(colorSetPath);
+        const catalogResolved = path.resolve(xcassetsPath);
+        if (!resolvedPath.startsWith(catalogResolved)) {
+          vscode.window.showErrorMessage('Invalid path');
+          return;
+        }
+
+        const colorPickerPath = path.join(this.context.extensionPath, 'native', 'ColorPicker');
+        const contentsPath = path.join(resolvedPath, 'Contents.json');
+
+        // Spawn the color picker with real-time updates
+        const colorPicker = spawn(colorPickerPath, [currentColor]);
+        let buffer = '';
+        pauseRefresh = true;
+
+        colorPicker.stdout.on('data', async (data: Buffer) => {
+          buffer += data.toString();
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || ''; // Keep incomplete line in buffer
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed || trimmed === '__CLOSED__') continue;
+
+            try {
+              const newColor = JSON.parse(trimmed);
+              if (!newColor['color-space']) continue;
+
+              // Read and update Contents.json
+              const contentsData = await fs.promises.readFile(contentsPath, 'utf8');
+              const contents = JSON.parse(contentsData);
+
+              if (contents.colors && contents.colors[colorIndex]) {
+                contents.colors[colorIndex].color = newColor;
+                await fs.promises.writeFile(contentsPath, JSON.stringify(contents, null, 2));
+
+                // Send targeted update to webview (no full refresh)
+                panel.webview.postMessage({
+                  command: 'colorUpdated',
+                  colorSetPath: resolvedPath,
+                  colorIndex,
+                  newColor
+                });
+              }
+            } catch {
+              // Ignore parse errors
+            }
+          }
+        });
+
+        colorPicker.on('close', () => {
+          pauseRefresh = false;
+        });
+
+        colorPicker.on('error', (err: Error) => {
+          pauseRefresh = false;
+          vscode.window.showErrorMessage(`Color picker failed: ${err.message}`);
+        });
+
+        return;
+      }
 
       if (message.command === 'rename') {
         const { oldPath, newName, assetType } = message;

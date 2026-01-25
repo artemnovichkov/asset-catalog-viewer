@@ -733,3 +733,24 @@ body {
   color: var(--vscode-testing-iconPassed);
   opacity: 1;
 }
+
+/* Color Panel Button */
+.color-panel-button {
+  width: 100%;
+  padding: 8px 12px;
+  background-color: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  border: 1px solid var(--vscode-input-border);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: var(--vscode-font-family);
+  transition: background-color 0.15s ease;
+}
+.color-panel-button:hover {
+  background-color: var(--vscode-button-secondaryHoverBackground);
+}
+.color-panel-button:focus-visible {
+  outline: 2px solid var(--vscode-focusBorder);
+  outline-offset: 2px;
+}

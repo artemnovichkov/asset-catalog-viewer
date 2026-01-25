@@ -20,3 +20,6 @@ AssetExample/**
 !CHANGELOG.md
 .claude/**
 .github/**
+native/*.swift
+conductor/**
+scripts/**

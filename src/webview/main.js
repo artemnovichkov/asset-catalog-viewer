@@ -248,6 +248,36 @@ setAllAssets(flattenItems(assetsData.items));
       if (idx >= 0) {
         selectAsset(idx, vscode);
       }
+    } else if (message.command === 'colorUpdated') {
+      // Update color in-place without full refresh
+      const { colorSetPath, colorIndex, newColor } = message;
+      const asset = allAssets.find(a => a.path === colorSetPath);
+      if (asset && asset.type === 'color' && asset.colors[colorIndex]) {
+        asset.colors[colorIndex].color = newColor;
+
+        // Update the color swatch in preview
+        const variantItem = document.querySelector(`.variant-item[data-color-index="${colorIndex}"]`);
+        if (variantItem) {
+          const colorSlot = variantItem.querySelector('.color-slot');
+          if (colorSlot && newColor.components) {
+            const c = newColor.components;
+            const r = Math.round(parseFloat(c.red || 0) * 255);
+            const g = Math.round(parseFloat(c.green || 0) * 255);
+            const b = Math.round(parseFloat(c.blue || 0) * 255);
+            const a = parseFloat(c.alpha || 1);
+            colorSlot.style.backgroundColor = `rgba(${r}, ${g}, ${b}, ${a})`;
+          }
+        }
+
+        // Update properties panel if this color is selected
+        const selectedVariant = document.querySelector('.variant-item.selected[data-color-index]');
+        if (selectedVariant && parseInt(selectedVariant.dataset.colorIndex) === colorIndex) {
+          // Re-render color properties
+          import('./properties.js').then(({ renderColorProperties }) => {
+            renderColorProperties(asset, colorIndex, vscode);
+          });
+        }
+      }
     }
   });
 })();

@@ -229,6 +229,17 @@ function renderSnippets(asset) {
   }
 }
 
+// Helper: convert color components to hex (RRGGBBAA)
+function colorToHex(color) {
+  if (!color || !color.components) return 'FFFFFFFF';
+  const c = color.components;
+  const r = Math.round(parseFloat(c.red || 0) * 255);
+  const g = Math.round(parseFloat(c.green || 0) * 255);
+  const b = Math.round(parseFloat(c.blue || 0) * 255);
+  const a = Math.round(parseFloat(c.alpha || 1) * 255);
+  return [r, g, b, a].map(v => v.toString(16).padStart(2, '0')).join('').toUpperCase();
+}
+
 // Render color properties for specific variant
 export function renderColorProperties(asset, colorIndex, vscode) {
   const panel = document.getElementById('propertiesPanel');
@@ -248,6 +259,8 @@ export function renderColorProperties(asset, colorIndex, vscode) {
     componentsHtml = row('Components', `R: ${r}, G: ${g}, B: ${b}, A: ${a}`);
   }
 
+  const hexColor = colorToHex(color);
+
   const html = `
     ${section('Color Set', `
       ${nameRow(asset.name, asset.path)}
@@ -261,10 +274,29 @@ export function renderColorProperties(asset, colorIndex, vscode) {
     ${section('Color', `
       ${row('Color Space', colorSpace)}
       ${componentsHtml}
+      <div style="margin-top: 12px;">
+        <button class="color-panel-button" id="showColorPanelBtn" data-path="${asset.path}" data-color-index="${colorIndex}" data-color-hex="${hexColor}">
+          Show Color Panel
+        </button>
+      </div>
     `, { border: true })}
   `;
 
   render(panel, html, vscode);
+
+  // Add click handler for color panel button
+  const colorPanelBtn = document.getElementById('showColorPanelBtn');
+  if (colorPanelBtn) {
+    colorPanelBtn.addEventListener('click', () => {
+      vscode.postMessage({
+        command: 'showColorPanel',
+        colorSetPath: colorPanelBtn.dataset.path,
+        colorIndex: parseInt(colorPanelBtn.dataset.colorIndex),
+        currentColor: colorPanelBtn.dataset.colorHex
+      });
+    });
+  }
+
   renderSnippets(asset);
 }
 

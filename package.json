@@ -79,9 +79,10 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run compile:prod",
-    "compile:prod": "tsc -p ./ && node esbuild.webview.mjs --minify",
-    "compile": "tsc -p ./ && npm run compile:webview",
+    "compile:prod": "tsc -p ./ && node esbuild.webview.mjs --minify && npm run compile:native",
+    "compile": "tsc -p ./ && npm run compile:webview && npm run compile:native",
     "compile:webview": "node esbuild.webview.mjs",
+    "compile:native": "swiftc -o native/ColorPicker native/ColorPicker.swift -framework AppKit",
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src --ext ts",
