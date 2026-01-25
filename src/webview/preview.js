@@ -78,6 +78,37 @@ export async function renderPreview(asset, vscode) {
   }
 }
 
+// Render multi-selection preview (multiple assets)
+export async function renderMultiPreview(assets, vscode) {
+  const panel = document.getElementById('previewPanel');
+
+  if (assets.length === 0) {
+    panel.innerHTML = '<div class="empty-state">No assets selected</div>';
+    return;
+  }
+
+  // Create container for all previews
+  panel.innerHTML = `<div class="folder-previews-list"></div>`;
+  const listContainer = panel.querySelector('.folder-previews-list');
+
+  // Render each asset's full preview
+  for (const asset of assets) {
+    const childPanel = document.createElement('div');
+    childPanel.className = 'folder-child-preview';
+    listContainer.appendChild(childPanel);
+
+    if (asset.type === 'image') {
+      await renderImagePreviewInContainer(asset, childPanel, panel, vscode);
+    } else if (asset.type === 'color') {
+      renderColorPreviewInContainer(asset, childPanel, panel, vscode);
+    } else if (asset.type === 'appicon') {
+      renderAppIconPreviewInContainer(asset, childPanel, panel, vscode);
+    } else if (asset.type === 'data') {
+      renderDataPreviewInContainer(asset, childPanel);
+    }
+  }
+}
+
 // Render folder preview with full child previews
 async function renderFolderPreview(folder, panel, vscode) {
   const children = folder.children || [];

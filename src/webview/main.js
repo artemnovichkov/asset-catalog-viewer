@@ -2,7 +2,7 @@
 import '@dotlottie/player-component';
 
 import {
-  allAssets, currentSelectedAssetIndex, expandedFolders,
+  allAssets, currentSelectedAssetIndex, selectedIndices, expandedFolders,
   setAllAssets, setFilterText, setExpandedFolders
 } from './state.js';
 import { flattenItems } from './assetData.js';
@@ -202,10 +202,10 @@ setAllAssets(flattenItems(assetsData.items));
   filterInput.addEventListener('input', (e) => {
     setFilterText(e.target.value);
     renderAssetList(assetsData, vscode).then(() => {
-      if (currentSelectedAssetIndex >= 0) {
+      if (selectedIndices.size > 0) {
         document.querySelectorAll('.asset-list-item').forEach((item) => {
-          const itemIndex = item.dataset.index;
-          item.classList.toggle('selected', itemIndex !== undefined && parseInt(itemIndex) === currentSelectedAssetIndex);
+          const itemIndex = parseInt(item.dataset.index);
+          item.classList.toggle('selected', !isNaN(itemIndex) && selectedIndices.has(itemIndex));
         });
       }
     });

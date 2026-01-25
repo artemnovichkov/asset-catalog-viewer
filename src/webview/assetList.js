@@ -1,4 +1,4 @@
-import { allAssets, expandedFolders, filterText, currentSelectedAssetIndex } from './state.js';
+import { allAssets, expandedFolders, filterText, selectedIndices } from './state.js';
 import { filterItems } from './assetData.js';
 import { escapeHtml, getColorValue, showLoading, hideLoading, formatFileSize } from './utils.js';
 import { renderPdfToCanvas } from './pdfRenderer.js';
@@ -144,7 +144,7 @@ export async function renderAssetList(assetsData, vscode) {
 
     item.addEventListener('click', (e) => {
       const idx = parseInt(item.dataset.index);
-      selectAsset(idx, vscode);
+      selectAsset(idx, vscode, e.shiftKey, e.metaKey || e.ctrlKey);
     });
 
     item.addEventListener('dblclick', (e) => {
@@ -156,9 +156,9 @@ export async function renderAssetList(assetsData, vscode) {
 
   // Add click handlers for assets
   listEl.querySelectorAll('.asset-list-item:not(.folder)').forEach(item => {
-    item.addEventListener('click', () => {
+    item.addEventListener('click', (e) => {
       const idx = parseInt(item.dataset.index);
-      selectAsset(idx, vscode);
+      selectAsset(idx, vscode, e.shiftKey, e.metaKey || e.ctrlKey);
     });
 
     item.addEventListener('dblclick', (e) => {
@@ -181,10 +181,10 @@ export function toggleFolder(folderPath, assetsData, vscode) {
   // Save expanded folders state
   vscode.setState({ expandedFolders: Array.from(expandedFolders) });
   renderAssetList(assetsData, vscode).then(() => {
-    if (currentSelectedAssetIndex >= 0) {
+    if (selectedIndices.size > 0) {
       document.querySelectorAll('.asset-list-item').forEach((item) => {
-        const itemIndex = item.dataset.index;
-        item.classList.toggle('selected', itemIndex !== undefined && parseInt(itemIndex) === currentSelectedAssetIndex);
+        const itemIndex = parseInt(item.dataset.index);
+        item.classList.toggle('selected', !isNaN(itemIndex) && selectedIndices.has(itemIndex));
       });
     }
   });
