@@ -41,12 +41,16 @@ export class XCAssetsViewer {
     let debounceTimer: NodeJS.Timeout | undefined;
     let pauseRefresh = false;
     const refresh = async () => {
-      if (pauseRefresh) return;
+      if (pauseRefresh) {
+        return;
+      }
       if (debounceTimer) {
         clearTimeout(debounceTimer);
       }
       debounceTimer = setTimeout(async () => {
-        if (pauseRefresh) return;
+        if (pauseRefresh) {
+          return;
+        }
         const updatedAssets = await parser.parse(xcassetsPath);
         panel.webview.html = await this.getHtmlForWebview(panel.webview, updatedAssets);
       }, 300);
@@ -78,258 +82,261 @@ export class XCAssetsViewer {
     });
 
     panel.webview.onDidReceiveMessage(async message => {
-      const { spawn, execFile } = require('child_process');
-
-      if (message.command === 'showColorPanel') {
-        const { colorSetPath, colorIndex, currentColor } = message;
-
-        // Validate path
-        const resolvedPath = path.resolve(colorSetPath);
-        const catalogResolved = path.resolve(xcassetsPath);
-        if (!resolvedPath.startsWith(catalogResolved)) {
-          vscode.window.showErrorMessage('Invalid path');
-          return;
-        }
-
-        const colorPickerPath = path.join(this.context.extensionPath, 'native', 'ColorPicker');
-        const contentsPath = path.join(resolvedPath, 'Contents.json');
-
-        // Spawn the color picker with real-time updates
-        const colorPicker = spawn(colorPickerPath, [currentColor]);
-        let buffer = '';
-        pauseRefresh = true;
-
-        colorPicker.stdout.on('data', async (data: Buffer) => {
-          buffer += data.toString();
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || ''; // Keep incomplete line in buffer
-
-          for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed || trimmed === '__CLOSED__') continue;
-
-            try {
-              const newColor = JSON.parse(trimmed);
-              if (!newColor['color-space']) continue;
-
-              // Read and update Contents.json
-              const contentsData = await fs.promises.readFile(contentsPath, 'utf8');
-              const contents = JSON.parse(contentsData);
-
-              if (contents.colors && contents.colors[colorIndex]) {
-                contents.colors[colorIndex].color = newColor;
-                await fs.promises.writeFile(contentsPath, JSON.stringify(contents, null, 2));
-
-                // Send targeted update to webview (no full refresh)
-                panel.webview.postMessage({
-                  command: 'colorUpdated',
-                  colorSetPath: resolvedPath,
-                  colorIndex,
-                  newColor
-                });
-              }
-            } catch {
-              // Ignore parse errors
-            }
-          }
-        });
-
-        colorPicker.on('close', () => {
-          pauseRefresh = false;
-        });
-
-        colorPicker.on('error', (err: Error) => {
-          pauseRefresh = false;
-          vscode.window.showErrorMessage(`Color picker failed: ${err.message}`);
-        });
-
-        return;
-      }
-
-      if (message.command === 'rename') {
-        const { oldPath, newName, assetType } = message;
-
-        // Validate oldPath is within xcassetsPath
-        const resolvedOld = path.resolve(oldPath);
-        const catalogResolved = path.resolve(xcassetsPath);
-        if (!resolvedOld.startsWith(catalogResolved)) {
-          vscode.window.showErrorMessage('Invalid path');
-          return;
-        }
-
-        try {
-          const parentDir = path.dirname(resolvedOld);
-          let newPath: string;
-
-          if (assetType === 'folder') {
-            // Folder: rename directory
-            newPath = path.join(parentDir, newName);
-          } else {
-            // Asset: rename directory and update extension
-            const ext = path.extname(resolvedOld);
-            newPath = path.join(parentDir, newName + ext);
-          }
-
-          // Rename the directory
-          await fs.promises.rename(resolvedOld, newPath);
-
-          // Re-parse and refresh webview
-          const assets = await parser.parse(xcassetsPath);
-          panel.webview.html = await this.getHtmlForWebview(panel.webview, assets);
-
-        } catch (err: any) {
-          vscode.window.showErrorMessage(`Rename failed: ${err.message}`);
-        }
-        return;
-      }
-
-      if (message.command === 'delete') {
-        const { filePath } = message;
-
-        // Validate path is within xcassetsPath
-        const resolvedPath = path.resolve(filePath);
-        const catalogResolved = path.resolve(xcassetsPath);
-        if (!resolvedPath.startsWith(catalogResolved)) {
-          vscode.window.showErrorMessage('Invalid path');
-          return;
-        }
-
-        try {
-          await fs.promises.rm(resolvedPath, { recursive: true });
-
-          // Re-parse and refresh webview
-          const assets = await parser.parse(xcassetsPath);
-          panel.webview.html = await this.getHtmlForWebview(panel.webview, assets);
-        } catch (err: any) {
-          vscode.window.showErrorMessage(`Delete failed: ${err.message}`);
-        }
-        return;
-      }
-
-      if (message.command === 'deleteMultiple') {
-        const { filePaths } = message;
-        const catalogResolved = path.resolve(xcassetsPath);
-
-        // Validate all paths
-        const validPaths: string[] = [];
-        for (const filePath of filePaths) {
-          const resolvedPath = path.resolve(filePath);
-          if (resolvedPath.startsWith(catalogResolved)) {
-            validPaths.push(resolvedPath);
-          }
-        }
-
-        if (validPaths.length === 0) {
-          vscode.window.showErrorMessage('No valid paths to delete');
-          return;
-        }
-
-        try {
-          // Delete all valid paths
-          for (const resolvedPath of validPaths) {
-            await fs.promises.rm(resolvedPath, { recursive: true });
-          }
-
-          // Re-parse and refresh webview
-          const assets = await parser.parse(xcassetsPath);
-          panel.webview.html = await this.getHtmlForWebview(panel.webview, assets);
-        } catch (err: any) {
-          vscode.window.showErrorMessage(`Delete failed: ${err.message}`);
-        }
-        return;
-      }
-
-      if (message.command === 'addColorSet') {
-        const { targetFolderPath } = message;
-
-        // Determine parent folder
-        let parentDir = xcassetsPath;
-        if (targetFolderPath) {
-          const resolvedTarget = path.resolve(targetFolderPath);
-          const catalogResolved = path.resolve(xcassetsPath);
-          if (resolvedTarget.startsWith(catalogResolved)) {
-            parentDir = resolvedTarget;
-          }
-        }
-
-        // Generate unique name
-        let baseName = 'Color';
-        let colorSetName = baseName;
-        let counter = 1;
-        while (fs.existsSync(path.join(parentDir, `${colorSetName}.colorset`))) {
-          colorSetName = `${baseName} ${counter}`;
-          counter++;
-        }
-
-        const colorSetPath = path.join(parentDir, `${colorSetName}.colorset`);
-        const contentsJson = {
-          colors: [
-            {
-              color: {
-                'color-space': 'display-p3',
-                components: { alpha: '1.000', blue: '1.000', green: '1.000', red: '1.000' }
-              },
-              idiom: 'universal'
-            },
-            {
-              appearances: [{ appearance: 'luminosity', value: 'dark' }],
-              color: {
-                'color-space': 'display-p3',
-                components: { alpha: '1.000', blue: '1.000', green: '1.000', red: '1.000' }
-              },
-              idiom: 'universal'
-            }
-          ],
-          info: { author: 'xcode', version: 1 }
-        };
-
-        try {
-          await fs.promises.mkdir(colorSetPath);
-          await fs.promises.writeFile(
-            path.join(colorSetPath, 'Contents.json'),
-            JSON.stringify(contentsJson, null, 2)
-          );
-
-          // File watcher will auto-refresh, but send message for selection
-          panel.webview.postMessage({ command: 'colorSetCreated', name: colorSetName, path: colorSetPath });
-        } catch (err: any) {
-          vscode.window.showErrorMessage(`Failed to create color set: ${err.message}`);
-        }
-        return;
-      }
-
-      // Validate path
-      if (!message.filePath) {
-        return;
-      }
-      const resolved = path.resolve(message.filePath);
-      const catalogResolved = path.resolve(xcassetsPath);
-      if (!resolved.startsWith(catalogResolved)) {
-        vscode.window.showErrorMessage('Invalid file path');
-        return;
-      }
-
-      if (message.command === 'quicklook') {
-        spawn('qlmanage', ['-p', resolved], { detached: true, stdio: 'ignore' }).unref();
-      } else if (message.command === 'showInFinder') {
-        spawn('open', ['-R', resolved], { detached: true, stdio: 'ignore' }).unref();
+      switch (message.command) {
+        case 'showColorPanel':
+          await this.handleShowColorPanel(message, xcassetsPath, panel, (val) => pauseRefresh = val);
+          break;
+        case 'rename':
+          await this.handleRename(message, xcassetsPath, parser, panel);
+          break;
+        case 'delete':
+          await this.handleDelete(message, xcassetsPath, parser, panel);
+          break;
+        case 'deleteMultiple':
+          await this.handleDeleteMultiple(message, xcassetsPath, parser, panel);
+          break;
+        case 'addColorSet':
+          await this.handleAddColorSet(message, xcassetsPath, panel);
+          break;
+        case 'quicklook':
+          this.handleQuickLook(message, xcassetsPath);
+          break;
+        case 'showInFinder':
+          this.handleShowInFinder(message, xcassetsPath);
+          break;
       }
     });
   }
 
-  private async getHtmlForWebview(
-    webview: vscode.Webview,
-    catalog: AssetCatalog
-  ): Promise<string> {
-    // Convert items to webview format with URIs
-    const convertItems = (items: AssetItem[]): ConvertedAssetItem[] => {
+  private validatePath(filePath: string, rootPath: string): string | null {
+    const resolvedPath = path.resolve(filePath);
+    const catalogResolved = path.resolve(rootPath);
+    if (!resolvedPath.startsWith(catalogResolved)) {
+      return null;
+    }
+    return resolvedPath;
+  }
+
+  private async handleShowColorPanel(message: any, xcassetsPath: string, panel: vscode.WebviewPanel, setPauseRefresh: (val: boolean) => void) {
+    const { colorSetPath, colorIndex, currentColor } = message;
+    const resolvedPath = this.validatePath(colorSetPath, xcassetsPath);
+    if (!resolvedPath) {
+      vscode.window.showErrorMessage('Invalid path');
+      return;
+    }
+
+    const { spawn } = require('child_process');
+    const colorPickerPath = path.join(this.context.extensionPath, 'native', 'ColorPicker');
+    const contentsPath = path.join(resolvedPath, 'Contents.json');
+
+    const colorPicker = spawn(colorPickerPath, [currentColor]);
+    let buffer = '';
+    setPauseRefresh(true);
+
+    colorPicker.stdout.on('data', async (data: Buffer) => {
+      buffer += data.toString();
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || ''; 
+
+                for (const line of lines) {
+                  const trimmed = line.trim();
+                  if (!trimmed || trimmed === '__CLOSED__') {
+                    continue;
+                  }
+      
+                  try {
+                    const newColor = JSON.parse(trimmed);
+                    if (!newColor['color-space']) {
+                      continue;
+                    }
+      
+                    const contentsData = await fs.promises.readFile(contentsPath, 'utf8');          const contents = JSON.parse(contentsData);
+
+          if (contents.colors && contents.colors[colorIndex]) {
+            contents.colors[colorIndex].color = newColor;
+            await fs.promises.writeFile(contentsPath, JSON.stringify(contents, null, 2));
+
+            panel.webview.postMessage({
+              command: 'colorUpdated',
+              colorSetPath: resolvedPath,
+              colorIndex,
+              newColor
+            });
+          }
+        } catch {
+          // Ignore parse errors
+        }
+      }
+    });
+
+    colorPicker.on('close', () => {
+      setPauseRefresh(false);
+    });
+
+    colorPicker.on('error', (err: Error) => {
+      setPauseRefresh(false);
+      vscode.window.showErrorMessage(`Color picker failed: ${err.message}`);
+    });
+  }
+
+  private async handleRename(message: any, xcassetsPath: string, parser: AssetParser, panel: vscode.WebviewPanel) {
+    const { oldPath, newName, assetType } = message;
+    const resolvedOld = this.validatePath(oldPath, xcassetsPath);
+    if (!resolvedOld) {
+      vscode.window.showErrorMessage('Invalid path');
+      return;
+    }
+
+    try {
+      const parentDir = path.dirname(resolvedOld);
+      let newPath: string;
+
+      if (assetType === 'folder') {
+        newPath = path.join(parentDir, newName);
+      } else {
+        const ext = path.extname(resolvedOld);
+        newPath = path.join(parentDir, newName + ext);
+      }
+
+      await fs.promises.rename(resolvedOld, newPath);
+      const assets = await parser.parse(xcassetsPath);
+      panel.webview.html = await this.getHtmlForWebview(panel.webview, assets);
+    } catch (err: any) {
+      vscode.window.showErrorMessage(`Rename failed: ${err.message}`);
+    }
+  }
+
+  private async handleDelete(message: any, xcassetsPath: string, parser: AssetParser, panel: vscode.WebviewPanel) {
+    const { filePath } = message;
+    const resolvedPath = this.validatePath(filePath, xcassetsPath);
+    if (!resolvedPath) {
+      vscode.window.showErrorMessage('Invalid path');
+      return;
+    }
+
+    try {
+      await fs.promises.rm(resolvedPath, { recursive: true });
+      const assets = await parser.parse(xcassetsPath);
+      panel.webview.html = await this.getHtmlForWebview(panel.webview, assets);
+    } catch (err: any) {
+      vscode.window.showErrorMessage(`Delete failed: ${err.message}`);
+    }
+  }
+
+  private async handleDeleteMultiple(message: any, xcassetsPath: string, parser: AssetParser, panel: vscode.WebviewPanel) {
+    const { filePaths } = message;
+    const validPaths: string[] = [];
+    
+    for (const filePath of filePaths) {
+      const resolved = this.validatePath(filePath, xcassetsPath);
+      if (resolved) {
+        validPaths.push(resolved);
+      }
+    }
+
+    if (validPaths.length === 0) {
+      vscode.window.showErrorMessage('No valid paths to delete');
+      return;
+    }
+
+    try {
+      for (const resolvedPath of validPaths) {
+        await fs.promises.rm(resolvedPath, { recursive: true });
+      }
+      const assets = await parser.parse(xcassetsPath);
+      panel.webview.html = await this.getHtmlForWebview(panel.webview, assets);
+    } catch (err: any) {
+      vscode.window.showErrorMessage(`Delete failed: ${err.message}`);
+    }
+  }
+
+  private async handleAddColorSet(message: any, xcassetsPath: string, panel: vscode.WebviewPanel) {
+    const { targetFolderPath } = message;
+    let parentDir = xcassetsPath;
+    
+    if (targetFolderPath) {
+      const resolvedTarget = this.validatePath(targetFolderPath, xcassetsPath);
+      if (resolvedTarget) {
+        parentDir = resolvedTarget;
+      }
+    }
+
+    let baseName = 'Color';
+    let colorSetName = baseName;
+    let counter = 1;
+    while (fs.existsSync(path.join(parentDir, `${colorSetName}.colorset`))) {
+      colorSetName = `${baseName} ${counter}`;
+      counter++;
+    }
+
+    const colorSetPath = path.join(parentDir, `${colorSetName}.colorset`);
+    const contentsJson = {
+      colors: [
+        {
+          color: {
+            'color-space': 'display-p3',
+            components: { alpha: '1.000', blue: '1.000', green: '1.000', red: '1.000' }
+          },
+          idiom: 'universal'
+        },
+        {
+          appearances: [{ appearance: 'luminosity', value: 'dark' }],
+          color: {
+            'color-space': 'display-p3',
+            components: { alpha: '1.000', blue: '1.000', green: '1.000', red: '1.000' }
+          },
+          idiom: 'universal'
+        }
+      ],
+      info: { author: 'xcode', version: 1 }
+    };
+
+    try {
+      await fs.promises.mkdir(colorSetPath);
+      await fs.promises.writeFile(
+        path.join(colorSetPath, 'Contents.json'),
+        JSON.stringify(contentsJson, null, 2)
+      );
+      panel.webview.postMessage({ command: 'colorSetCreated', name: colorSetName, path: colorSetPath });
+    } catch (err: any) {
+      vscode.window.showErrorMessage(`Failed to create color set: ${err.message}`);
+    }
+  }
+
+  private handleQuickLook(message: any, xcassetsPath: string) {
+    if (!message.filePath) {
+      return;
+    }
+    const resolved = this.validatePath(message.filePath, xcassetsPath);
+    if (!resolved) {
+      vscode.window.showErrorMessage('Invalid file path');
+      return;
+    }
+    const { spawn } = require('child_process');
+    spawn('qlmanage', ['-p', resolved], { detached: true, stdio: 'ignore' }).unref();
+  }
+
+  private handleShowInFinder(message: any, xcassetsPath: string) {
+    if (!message.filePath) {
+      return;
+    }
+    const resolved = this.validatePath(message.filePath, xcassetsPath);
+    if (!resolved) {
+      vscode.window.showErrorMessage('Invalid file path');
+      return;
+    }
+    const { spawn } = require('child_process');
+    spawn('open', ['-R', resolved], { detached: true, stdio: 'ignore' }).unref();
+  }
+
+  private convertAssetItems(items: AssetItem[], webview: vscode.Webview): ConvertedAssetItem[] {
       return items.map(item => {
         if (item.type === 'folder') {
           return {
             type: 'folder' as const,
             name: item.name,
             path: item.path || '',
-            children: item.children ? convertItems(item.children) : [],
+            children: item.children ? this.convertAssetItems(item.children, webview) : [],
             providesNamespace: item.providesNamespace
           };
         } else if (item.type === 'imageset' && item.imageSet) {
@@ -389,13 +396,17 @@ export class XCAssetsViewer {
         }
         return null;
       }).filter((item): item is ConvertedAssetItem => item !== null);
-    };
+  }
 
+  private async getHtmlForWebview(
+    webview: vscode.Webview,
+    catalog: AssetCatalog
+  ): Promise<string> {
     const config = vscode.workspace.getConfiguration('assetCatalogViewer');
     const largeAssetThreshold = config.get<number>('largeAssetThreshold', 500);
 
     const assetsData = {
-      items: convertItems(catalog.items),
+      items: this.convertAssetItems(catalog.items, webview),
       config: {
         largeAssetThreshold,
         templates: {

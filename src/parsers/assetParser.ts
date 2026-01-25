@@ -49,8 +49,12 @@ export class AssetParser {
 
     // Filter valid entries first
     const validEntries = entries.filter(entry => {
-      if (!entry.isDirectory()) return false;
-      if (entry.name.startsWith('.')) return false;
+      if (!entry.isDirectory()) {
+        return false;
+      }
+      if (entry.name.startsWith('.')) {
+        return false;
+      }
       const entryPath = path.join(dirPath, entry.name);
       const resolved = path.resolve(entryPath);
       if (!resolved.startsWith(path.resolve(root))) {
@@ -65,60 +69,20 @@ export class AssetParser {
       const entryPath = path.join(dirPath, entry.name);
 
       if (entry.name.endsWith('.imageset')) {
-        const imageSet = await this.parseImageSet(entryPath);
-        if (!imageSet) {
-          console.warn(`Failed to parse imageset: ${entryPath}`);
-          return null;
-        }
-        let size = 0;
-        for (const img of imageSet.images) {
-          if (img.path) {
-            size += await this.getFileSize(img.path);
-          }
-        }
-        return { type: 'imageset', name: imageSet.name, path: entryPath, imageSet, size };
+        return this.processAssetSet(entryPath, 'imageset', this.parseImageSet.bind(this));
       } else if (entry.name.endsWith('.appiconset')) {
-        const appIconSet = await this.parseAppIconSet(entryPath);
-        if (!appIconSet) {
-          console.warn(`Failed to parse appiconset: ${entryPath}`);
-          return null;
-        }
-        let size = 0;
-        for (const icon of appIconSet.icons) {
-          if (icon.path) {
-            size += await this.getFileSize(icon.path);
-          }
-        }
-        return { type: 'appiconset', name: appIconSet.name, path: entryPath, appIconSet, size };
+        return this.processAssetSet(entryPath, 'appiconset', this.parseAppIconSet.bind(this));
       } else if (entry.name.endsWith('.colorset')) {
-        const colorSet = await this.parseColorSet(entryPath);
-        if (!colorSet) {
-          console.warn(`Failed to parse colorset: ${entryPath}`);
-          return null;
-        }
-        return { type: 'colorset', name: colorSet.name, path: entryPath, colorSet, size: 0 };
+        return this.processAssetSet(entryPath, 'colorset', this.parseColorSet.bind(this));
       } else if (entry.name.endsWith('.dataset')) {
-        const dataSet = await this.parseDataSet(entryPath);
-        if (!dataSet) {
-          console.warn(`Failed to parse dataset: ${entryPath}`);
-          return null;
-        }
-        let size = 0;
-        for (const item of dataSet.data) {
-          if (item.path) {
-            size += await this.getFileSize(item.path);
-          }
-        }
-        return { type: 'dataset', name: dataSet.name, path: entryPath, dataSet, size };
+        return this.processAssetSet(entryPath, 'dataset', this.parseDataSet.bind(this));
       } else {
         // Regular folder - check for Contents.json and recurse
         const children = await this.parseDirectory(entryPath, depth + 1, root);
         let providesNamespace = false;
         try {
-          const contentsPath = path.join(entryPath, 'Contents.json');
-          const content = await fs.promises.readFile(contentsPath, 'utf8');
-          const json = JSON.parse(content);
-          if (json.properties && json.properties['provides-namespace']) {
+          const contents = await this.readContentsFile<{ properties?: { 'provides-namespace'?: boolean } }>(entryPath);
+          if (contents?.properties?.['provides-namespace']) {
             providesNamespace = true;
           }
         } catch (e) {
@@ -134,19 +98,76 @@ export class AssetParser {
       .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
   }
 
-  private async parseImageSet(imageSetPath: string): Promise<ImageSet | null> {
-    const contentsPath = path.join(imageSetPath, 'Contents.json');
-
-    let contents: ImageContents;
-    try {
-      contents = JSON.parse(
-        await fs.promises.readFile(contentsPath, 'utf8')
-      ) as ImageContents;
-    } catch (error) {
-      vscode.window.showErrorMessage(
-        `Failed to parse ${path.basename(imageSetPath)}: ${error instanceof Error ? error.message : 'Unknown error'}`
-      );
+  private async processAssetSet<T extends { name: string }>(
+    entryPath: string,
+    type: AssetItem['type'],
+    parser: (path: string) => Promise<T | null>,
+    _ignored?: any
+  ): Promise<AssetItem | null> {
+    const set = await parser(entryPath);
+    if (!set) {
+      console.warn(`Failed to parse ${type}: ${entryPath}`);
       return null;
+    }
+
+    let size = 0;
+    // Calculate size based on type
+    if (type === 'imageset') {
+      const s = set as unknown as ImageSet;
+      for (const img of s.images) {
+        if (img.path) {
+          size += await this.getFileSize(img.path);
+        }
+      }
+    } else if (type === 'appiconset') {
+      const s = set as unknown as AppIconSet;
+      for (const icon of s.icons) {
+        if (icon.path) {
+          size += await this.getFileSize(icon.path);
+        }
+      }
+    } else if (type === 'dataset') {
+      const s = set as unknown as DataSet;
+      for (const item of s.data) {
+        if (item.path) {
+          size += await this.getFileSize(item.path);
+        }
+      }
+    }
+
+    const item: AssetItem = { type, name: set.name, path: entryPath, size };
+    if (type === 'imageset') {
+      item.imageSet = set as unknown as ImageSet;
+    } else if (type === 'appiconset') {
+      item.appIconSet = set as unknown as AppIconSet;
+    } else if (type === 'colorset') {
+      item.colorSet = set as unknown as ColorSet;
+    } else if (type === 'dataset') {
+      item.dataSet = set as unknown as DataSet;
+    }
+    
+    return item;
+  }
+
+  private async readContentsFile<T>(assetPath: string): Promise<T | null> {
+    const contentsPath = path.join(assetPath, 'Contents.json');
+    try {
+      const content = await fs.promises.readFile(contentsPath, 'utf8');
+      return JSON.parse(content) as T;
+    } catch (error) {
+       // Only show error if it's not a missing file (which is common for folders)
+       // But for asset sets it should exist.
+       return null;
+    }
+  }
+
+  private async parseImageSet(imageSetPath: string): Promise<ImageSet | null> {
+    const contents = await this.readContentsFile<ImageContents>(imageSetPath);
+    
+    if (!contents) {
+        // Log error only if needed, readContentsFile swallows it but we might want to know for asset sets
+        vscode.window.showErrorMessage(`Failed to parse ${path.basename(imageSetPath)}`);
+        return null;
     }
 
     // Validate structure
@@ -182,18 +203,11 @@ export class AssetParser {
   }
 
   private async parseAppIconSet(appIconSetPath: string): Promise<AppIconSet | null> {
-    const contentsPath = path.join(appIconSetPath, 'Contents.json');
-
-    let contents: AppIconContents;
-    try {
-      contents = JSON.parse(
-        await fs.promises.readFile(contentsPath, 'utf8')
-      ) as AppIconContents;
-    } catch (error) {
-      vscode.window.showErrorMessage(
-        `Failed to parse ${path.basename(appIconSetPath)}: ${error instanceof Error ? error.message : 'Unknown error'}`
-      );
-      return null;
+    const contents = await this.readContentsFile<AppIconContents>(appIconSetPath);
+    
+    if (!contents) {
+        vscode.window.showErrorMessage(`Failed to parse ${path.basename(appIconSetPath)}`);
+        return null;
     }
 
     // Validate structure
@@ -227,18 +241,11 @@ export class AssetParser {
   }
 
   private async parseColorSet(colorSetPath: string): Promise<ColorSet | null> {
-    const contentsPath = path.join(colorSetPath, 'Contents.json');
-
-    let contents: ColorContents;
-    try {
-      contents = JSON.parse(
-        await fs.promises.readFile(contentsPath, 'utf8')
-      ) as ColorContents;
-    } catch (error) {
-      vscode.window.showErrorMessage(
-        `Failed to parse ${path.basename(colorSetPath)}: ${error instanceof Error ? error.message : 'Unknown error'}`
-      );
-      return null;
+    const contents = await this.readContentsFile<ColorContents>(colorSetPath);
+    
+    if (!contents) {
+        vscode.window.showErrorMessage(`Failed to parse ${path.basename(colorSetPath)}`);
+        return null;
     }
 
     // Validate structure
@@ -254,18 +261,11 @@ export class AssetParser {
   }
 
   private async parseDataSet(dataSetPath: string): Promise<DataSet | null> {
-    const contentsPath = path.join(dataSetPath, 'Contents.json');
-
-    let contents: DataContents;
-    try {
-      contents = JSON.parse(
-        await fs.promises.readFile(contentsPath, 'utf8')
-      ) as DataContents;
-    } catch (error) {
-      vscode.window.showErrorMessage(
-        `Failed to parse ${path.basename(dataSetPath)}: ${error instanceof Error ? error.message : 'Unknown error'}`
-      );
-      return null;
+    const contents = await this.readContentsFile<DataContents>(dataSetPath);
+    
+    if (!contents) {
+        vscode.window.showErrorMessage(`Failed to parse ${path.basename(dataSetPath)}`);
+        return null;
     }
 
     // Validate structure
