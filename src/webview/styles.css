@@ -42,6 +42,41 @@ body {
   padding: 8px;
   border-top: 1px solid var(--vscode-panel-border);
   background-color: var(--vscode-sideBar-background);
+  display: flex;
+  gap: 8px;
+  position: relative;
+}
+.add-asset-button {
+  padding: 6px 8px;
+  background-color: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  border: 1px solid var(--vscode-input-border);
+  border-radius: 3px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.add-asset-button:hover {
+  background-color: var(--vscode-button-secondaryHoverBackground);
+}
+.add-asset-menu {
+  position: absolute;
+  bottom: 100%;
+  left: 8px;
+  margin-bottom: 4px;
+  background-color: var(--vscode-menu-background);
+  border: 1px solid var(--vscode-menu-border);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  padding: 4px 0;
+  min-width: 150px;
+  z-index: 1000;
+  display: none;
+}
+.add-asset-menu.visible {
+  display: block;
 }
 .filter-input {
   width: 100%;

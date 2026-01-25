@@ -210,4 +210,44 @@ setAllAssets(flattenItems(assetsData.items));
       }
     });
   });
+
+  // Add asset menu
+  const addAssetButton = document.getElementById('addAssetButton');
+  const addAssetMenu = document.getElementById('addAssetMenu');
+
+  addAssetButton.addEventListener('click', (e) => {
+    e.stopPropagation();
+    addAssetMenu.classList.toggle('visible');
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!addAssetMenu.contains(e.target) && e.target !== addAssetButton) {
+      addAssetMenu.classList.remove('visible');
+    }
+  });
+
+  document.getElementById('addColorSet').addEventListener('click', () => {
+    let targetFolderPath = null;
+    if (currentSelectedAssetIndex >= 0) {
+      const selected = allAssets[currentSelectedAssetIndex];
+      if (selected.type === 'folder') {
+        targetFolderPath = selected.path;
+      }
+    }
+    vscode.postMessage({ command: 'addColorSet', targetFolderPath });
+    addAssetMenu.classList.remove('visible');
+  });
+
+  // Handle messages from extension
+  window.addEventListener('message', (event) => {
+    const message = event.data;
+    if (message.command === 'colorSetCreated') {
+      // Find and select the new colorset after refresh
+      const newPath = message.path;
+      const idx = allAssets.findIndex(a => a.path === newPath);
+      if (idx >= 0) {
+        selectAsset(idx, vscode);
+      }
+    }
+  });
 })();

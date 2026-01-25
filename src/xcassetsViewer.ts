@@ -137,6 +137,65 @@ export class XCAssetsViewer {
         return;
       }
 
+      if (message.command === 'addColorSet') {
+        const { targetFolderPath } = message;
+
+        // Determine parent folder
+        let parentDir = xcassetsPath;
+        if (targetFolderPath) {
+          const resolvedTarget = path.resolve(targetFolderPath);
+          const catalogResolved = path.resolve(xcassetsPath);
+          if (resolvedTarget.startsWith(catalogResolved)) {
+            parentDir = resolvedTarget;
+          }
+        }
+
+        // Generate unique name
+        let baseName = 'Color';
+        let colorSetName = baseName;
+        let counter = 1;
+        while (fs.existsSync(path.join(parentDir, `${colorSetName}.colorset`))) {
+          colorSetName = `${baseName} ${counter}`;
+          counter++;
+        }
+
+        const colorSetPath = path.join(parentDir, `${colorSetName}.colorset`);
+        const contentsJson = {
+          colors: [
+            {
+              color: {
+                'color-space': 'display-p3',
+                components: { alpha: '1.000', blue: '1.000', green: '1.000', red: '1.000' }
+              },
+              idiom: 'universal'
+            },
+            {
+              appearances: [{ appearance: 'luminosity', value: 'dark' }],
+              color: {
+                'color-space': 'display-p3',
+                components: { alpha: '1.000', blue: '1.000', green: '1.000', red: '1.000' }
+              },
+              idiom: 'universal'
+            }
+          ],
+          info: { author: 'xcode', version: 1 }
+        };
+
+        try {
+          await fs.promises.mkdir(colorSetPath);
+          await fs.promises.writeFile(
+            path.join(colorSetPath, 'Contents.json'),
+            JSON.stringify(contentsJson, null, 2)
+          );
+
+          // File watcher will auto-refresh, but send message for selection
+          panel.webview.postMessage({ command: 'colorSetCreated', name: colorSetName, path: colorSetPath });
+        } catch (err: any) {
+          vscode.window.showErrorMessage(`Failed to create color set: ${err.message}`);
+        }
+        return;
+      }
+
       // Validate path
       if (!message.filePath) {
         return;
