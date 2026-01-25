@@ -63,11 +63,14 @@ function getAppearancesText(items) {
   return text;
 }
 
-// Helper: get gamut from color items
+// Helper: get gamut from color items (checks for display-gamut appearances)
 function getGamut(colorItems) {
   for (const item of colorItems) {
-    if (item.color?.['color-space']) {
-      return item.color['color-space'].toUpperCase();
+    const appearances = item.appearances || [];
+    for (const app of appearances) {
+      if (app.appearance === 'display-gamut' && app.value === 'display-p3') {
+        return 'Display P3';
+      }
     }
   }
   return 'Any';
