@@ -12,11 +12,7 @@ export function selectAsset(index, vscode) {
   });
 
   const asset = allAssets[index];
-  if (asset.type === 'folder') {
-    document.getElementById('previewPanel').innerHTML = '<div class="empty-state">Folder</div>';
-  } else {
-    renderPreview(asset, vscode);
-  }
+  renderPreview(asset, vscode);
   renderProperties(asset, vscode);
 }
 

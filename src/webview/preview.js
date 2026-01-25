@@ -65,7 +65,9 @@ function setupVariantClicks(panel, selector, dataAttr, handler) {
 export async function renderPreview(asset, vscode) {
   const panel = document.getElementById('previewPanel');
 
-  if (asset.type === 'image') {
+  if (asset.type === 'folder') {
+    await renderFolderPreview(asset, panel, vscode);
+  } else if (asset.type === 'image') {
     await renderImagePreview(asset, panel, vscode);
   } else if (asset.type === 'color') {
     renderColorPreview(asset, panel, vscode);
@@ -73,6 +75,211 @@ export async function renderPreview(asset, vscode) {
     renderAppIconPreview(asset, panel, vscode);
   } else if (asset.type === 'data') {
     renderDataPreview(asset, panel);
+  }
+}
+
+// Render folder preview with full child previews
+async function renderFolderPreview(folder, panel, vscode) {
+  const children = folder.children || [];
+
+  if (children.length === 0) {
+    panel.innerHTML = previewContainer(folder.name, '<div class="empty-state">Empty folder</div>');
+    return;
+  }
+
+  // Filter to only renderable assets (not subfolders)
+  const assets = children.filter(c => c.type !== 'folder');
+
+  if (assets.length === 0) {
+    panel.innerHTML = previewContainer(folder.name, '<div class="empty-state">No assets in folder</div>');
+    return;
+  }
+
+  // Create container for all previews
+  panel.innerHTML = `<div class="folder-previews-list"></div>`;
+  const listContainer = panel.querySelector('.folder-previews-list');
+
+  // Render each child's full preview
+  for (const child of assets) {
+    const childPanel = document.createElement('div');
+    childPanel.className = 'folder-child-preview';
+    listContainer.appendChild(childPanel);
+
+    if (child.type === 'image') {
+      await renderImagePreviewInContainer(child, childPanel, vscode);
+    } else if (child.type === 'color') {
+      renderColorPreviewInContainer(child, childPanel, vscode);
+    } else if (child.type === 'appicon') {
+      renderAppIconPreviewInContainer(child, childPanel, vscode);
+    } else if (child.type === 'data') {
+      renderDataPreviewInContainer(child, childPanel);
+    }
+  }
+}
+
+// Helper functions to render previews in a specific container
+
+async function renderImagePreviewInContainer(asset, container, vscode) {
+  const idiomOrder = ['universal', 'iphone', 'ipad', 'mac-catalyst', 'mac', 'vision', 'watch', 'tv'];
+  const idiomGroups = groupBy(asset.images, img => img.subtype === 'mac-catalyst' ? 'mac-catalyst' : img.idiom);
+
+  const hasAppearances = asset.images.some(i => i.appearances && i.appearances.length > 0);
+  const hasScales = asset.images.some(i => i.scale);
+
+  const groupsHtml = idiomOrder
+    .filter(idiom => idiomGroups[idiom])
+    .map(idiom => {
+      const images = idiomGroups[idiom];
+      const isSingleUniversal = idiom === 'universal' && images.length === 1 && images[0].filename && !images[0].scale && !hasAppearances;
+
+      let slotsHtml;
+      if (isSingleUniversal) {
+        slotsHtml = imageSlot(images[0], 'All');
+      } else if (hasAppearances && hasScales) {
+        const hasLight = images.some(i => i.appearances?.some(a => a.appearance === 'luminosity' && a.value === 'light'));
+        const hasDark = images.some(i => i.appearances?.some(a => a.appearance === 'luminosity' && a.value === 'dark'));
+
+        const appearances = [{ key: 'any', label: 'Any Appearance' }];
+        if (hasLight) appearances.push({ key: 'light', label: 'Light' });
+        if (hasDark) appearances.push({ key: 'dark', label: 'Dark' });
+
+        const scales = ['1x', '2x', '3x'];
+
+        slotsHtml = `<div class="appearance-scale-grid">${appearances.map(({ key, label }) => {
+          const rowHtml = scales.map(scale => {
+            const img = findImageByAppearance(images, key, scale);
+            const slotLabel = `${scale}<br>${label}`;
+            return img?.filename ? imageSlot(img, slotLabel) : emptySlot(slotLabel);
+          }).join('');
+          return `<div class="appearance-row">${rowHtml}</div>`;
+        }).join('')}</div>`;
+      } else if (hasAppearances) {
+        const hasLight = images.some(i => i.appearances?.some(a => a.appearance === 'luminosity' && a.value === 'light'));
+        const hasDark = images.some(i => i.appearances?.some(a => a.appearance === 'luminosity' && a.value === 'dark'));
+
+        const appearances = [{ key: 'any', label: 'Any Appearance' }];
+        if (hasLight) appearances.push({ key: 'light', label: 'Light' });
+        if (hasDark) appearances.push({ key: 'dark', label: 'Dark' });
+
+        slotsHtml = `<div class="appearance-stack">${appearances.map(({ key, label }) => {
+          const img = findImageByAppearance(images, key);
+          return img?.filename ? imageSlot(img, label) : emptySlot(label);
+        }).join('')}</div>`;
+      } else {
+        slotsHtml = ['1x', '2x', '3x'].map(scale => {
+          const img = images.find(i => i.scale === scale);
+          return img?.filename ? imageSlot(img, scale) : emptySlot(scale);
+        }).join('');
+      }
+
+      return deviceGroup(slotsHtml, DEVICE_LABELS[idiom]);
+    }).join('');
+
+  container.innerHTML = previewContainer(asset.name, groupsHtml);
+
+  for (const canvas of container.querySelectorAll('canvas[data-preview-pdf]')) {
+    await renderPdfToCanvas(canvas.dataset.pdfUrl, canvas, 1, 90, 90);
+  }
+}
+
+function renderColorPreviewInContainer(asset, container, vscode) {
+  const idiomGroups = groupBy(asset.colors, c => c.idiom || 'universal');
+
+  const idiomHtml = Object.keys(idiomGroups).map(idiom => {
+    const colors = idiomGroups[idiom];
+    const hasLight = colors.some(c => c.appearances?.some(a => a.appearance === 'luminosity' && a.value === 'light'));
+    const hasDark = colors.some(c => c.appearances?.some(a => a.appearance === 'luminosity' && a.value === 'dark'));
+
+    const appearances = [{ key: 'any', label: 'Any Appearance' }];
+    if (hasLight) appearances.push({ key: 'light', label: 'Light' });
+    if (hasDark) appearances.push({ key: 'dark', label: 'Dark' });
+
+    const slotsHtml = appearances.map(({ key, label }) => {
+      const colorItem = findColorByAppearance(colors, key);
+      const valid = colorItem?.color?.components;
+      return valid ? colorSlot(colorItem, label) : emptySlot(label, 'color');
+    }).join('');
+
+    return deviceGroup(slotsHtml, DEVICE_LABELS[idiom] || idiom);
+  }).join('');
+
+  container.innerHTML = previewContainer(asset.name, idiomHtml);
+}
+
+function renderAppIconPreviewInContainer(asset, container, vscode) {
+  const platformOrder = ['ios', 'macos', 'watchos', 'tvos', 'universal', 'iphone', 'ipad', 'mac', 'watch', 'tv', 'car'];
+  const platformGroups = groupBy(asset.icons, i => i.platform || i.idiom || 'other');
+
+  Object.keys(platformGroups).forEach(k => {
+    if (!platformOrder.includes(k)) platformOrder.push(k);
+  });
+
+  const contentHtml = platformOrder
+    .filter(key => platformGroups[key])
+    .map(key => {
+      const sizeGroups = groupBy(platformGroups[key], i => i.size || 'unknown');
+
+      const iconSlotsHtml = Object.keys(sizeGroups).map(size => {
+        const variants = getIconVariants(sizeGroups[size]);
+        const variantsHtml = variants.map(({ icon, label }) =>
+          icon?.filename ? iconSlot(icon, label, size) : emptySlot(label)
+        ).join('');
+
+        const displaySize = `${size.split('x')[0]}pt`;
+        const labelHtml = `
+          <div class="device-group-label" style="border-top: 1px solid var(--vscode-panel-border) !important; padding-top: 5px; margin-top: 5px; line-height: 1.4;">
+            <div style="font-weight: 600; color: var(--vscode-foreground);">${DEVICE_LABELS[key] || key}</div>
+            <div style="font-weight: normal;">${displaySize}</div>
+          </div>`;
+
+        return `<div class="device-group" style="margin-bottom: 20px;"><div class="slot-grid">${variantsHtml}</div>${labelHtml}</div>`;
+      }).join('');
+
+      return `<div class="platform-group" style="width: 100%; margin-bottom: 30px;">${iconSlotsHtml}</div>`;
+    }).join('');
+
+  container.innerHTML = previewContainer(asset.name, contentHtml);
+}
+
+function renderDataPreviewInContainer(asset, container) {
+  const dataItem = asset.data[0];
+
+  // For lottie in folder view, show static player without controls
+  if (dataItem?.isLottie && dataItem.uri) {
+    container.innerHTML = `
+      <div class="preview-container">
+        <div class="preview-title">${escapeHtml(asset.name)}</div>
+        <div class="preview-content" style="width: 100%; justify-content: center;">
+          <dotlottie-player src="${dataItem.uri}" autoplay loop class="lottie-animation" style="max-width: 300px; max-height: 200px;"></dotlottie-player>
+        </div>
+      </div>`;
+  } else if (dataItem?.isLottie && dataItem.content) {
+    container.innerHTML = `
+      <div class="preview-container">
+        <div class="preview-title">${escapeHtml(asset.name)}</div>
+        <div class="preview-content" style="width: 100%; justify-content: center;">
+          <div style="color: var(--vscode-descriptionForeground);"><i class="codicon codicon-play-circle"></i> Lottie Animation</div>
+        </div>
+      </div>`;
+  } else {
+    let contentHtml;
+    if (dataItem?.content) {
+      const escaped = dataItem.content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      contentHtml = `
+        <div style="width: 100%; max-width: 800px;">
+          <div style="margin-bottom: 12px; font-size: 13px; color: var(--vscode-descriptionForeground);">File: ${escapeHtml(dataItem.filename)}</div>
+          <pre style="background-color: var(--vscode-textCodeBlock-background); border: 1px solid var(--vscode-panel-border); border-radius: 4px; padding: 16px; overflow: auto; max-height: 300px; font-family: var(--vscode-editor-font-family); font-size: 13px; line-height: 1.5; text-align: left;">${escaped}</pre>
+        </div>`;
+    } else if (dataItem?.filename) {
+      contentHtml = `<div style="color: var(--vscode-descriptionForeground);">File: ${escapeHtml(dataItem.filename)}<br><em>(Binary or unreadable content)</em></div>`;
+    } else {
+      contentHtml = `<div class="preview-label">${dataItem ? asset.data.length + ' data items' : 'No data items'}</div>`;
+    }
+    container.innerHTML = `
+      <div class="preview-container">
+        <div class="preview-title">${escapeHtml(asset.name)}</div>
+        <div class="preview-content" style="width: 100%;">${contentHtml}</div>
+      </div>`;
   }
 }
 
