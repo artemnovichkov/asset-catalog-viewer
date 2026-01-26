@@ -280,6 +280,23 @@ setAllAssets(flattenItems(assetsData.items));
           });
         }
       }
+    } else if (message.command === 'namespaceUpdated') {
+      // Update folder namespace state in-place
+      const { folderPath, providesNamespace } = message;
+      const asset = allAssets.find(a => a.path === folderPath);
+      if (asset && asset.type === 'folder') {
+        asset.providesNamespace = providesNamespace;
+
+        // Update the folder icon in left panel
+        const folderItem = document.querySelector(`.asset-list-item.folder[data-path="${folderPath}"]`);
+        if (folderItem) {
+          if (providesNamespace) {
+            folderItem.classList.add('provides-namespace');
+          } else {
+            folderItem.classList.remove('provides-namespace');
+          }
+        }
+      }
     }
   });
 })();

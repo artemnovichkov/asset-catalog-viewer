@@ -104,6 +104,9 @@ export class XCAssetsViewer {
         case 'showInFinder':
           this.handleShowInFinder(message, xcassetsPath);
           break;
+        case 'toggleNamespace':
+          await this.handleToggleNamespace(message, xcassetsPath, panel, (val) => pauseRefresh = val);
+          break;
       }
     });
   }
@@ -327,6 +330,60 @@ export class XCAssetsViewer {
     }
     const { spawn } = require('child_process');
     spawn('open', ['-R', resolved], { detached: true, stdio: 'ignore' }).unref();
+  }
+
+  private async handleToggleNamespace(message: any, xcassetsPath: string, panel: vscode.WebviewPanel, setPauseRefresh: (val: boolean) => void) {
+    const { folderPath, providesNamespace } = message;
+    const resolvedPath = this.validatePath(folderPath, xcassetsPath);
+    if (!resolvedPath) {
+      vscode.window.showErrorMessage('Invalid path');
+      return;
+    }
+
+    const contentsPath = path.join(resolvedPath, 'Contents.json');
+
+    setPauseRefresh(true);
+    try {
+      let contents: any = { info: { author: 'xcode', version: 1 } };
+
+      // Try to read existing Contents.json
+      try {
+        const data = await fs.promises.readFile(contentsPath, 'utf8');
+        contents = JSON.parse(data);
+      } catch {
+        // File doesn't exist, use default
+      }
+
+      // Update provides-namespace property
+      if (providesNamespace) {
+        if (!contents.properties) {
+          contents.properties = {};
+        }
+        contents.properties['provides-namespace'] = true;
+      } else {
+        if (contents.properties) {
+          delete contents.properties['provides-namespace'];
+          // Remove empty properties object
+          if (Object.keys(contents.properties).length === 0) {
+            delete contents.properties;
+          }
+        }
+      }
+
+      await fs.promises.writeFile(contentsPath, JSON.stringify(contents, null, 2));
+
+      // Notify webview to update left panel
+      panel.webview.postMessage({
+        command: 'namespaceUpdated',
+        folderPath: resolvedPath,
+        providesNamespace
+      });
+    } catch (err: any) {
+      vscode.window.showErrorMessage(`Failed to update namespace: ${err.message}`);
+    } finally {
+      // Delay unpause to let file watcher events pass
+      setTimeout(() => setPauseRefresh(false), 500);
+    }
   }
 
   private convertAssetItems(items: AssetItem[], webview: vscode.Webview): ConvertedAssetItem[] {

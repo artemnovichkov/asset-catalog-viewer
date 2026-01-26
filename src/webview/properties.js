@@ -451,18 +451,32 @@ export function renderProperties(asset, vscode) {
   } else if (asset.type === 'data') {
     html = section('Data Set', nameRow(asset.name, asset.path));
   } else if (asset.type === 'folder') {
-    const checked = asset.providesNamespace ? '☑' : '☐';
+    const checked = asset.providesNamespace ? 'checked' : '';
     html = section('Folder', `
       ${nameRow(asset.name, asset.path)}
       <div class="property-row align-top">
         <span class="property-row-label">Namespace</span>
         <div style="font-size: 12px; line-height: 1.5; padding: 2px 0;">
-           ${checked} Provides Namespace
+           <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+             <input type="checkbox" id="providesNamespaceCheckbox" ${checked} data-path="${asset.path}" style="cursor: pointer;" />
+             Provides Namespace
+           </label>
         </div>
       </div>
     `);
   }
 
   render(panel, html, vscode);
+
+  // Add handler for namespace checkbox
+  const namespaceCheckbox = document.getElementById('providesNamespaceCheckbox');
+  if (namespaceCheckbox) {
+    namespaceCheckbox.addEventListener('change', (e) => {
+      const folderPath = e.target.dataset.path;
+      const providesNamespace = e.target.checked;
+      vscode.postMessage({ command: 'toggleNamespace', folderPath, providesNamespace });
+    });
+  }
+
   renderSnippets(asset);
 }
