@@ -297,6 +297,13 @@ setAllAssets(flattenItems(assetsData.items));
           }
         }
       }
+    } else if (message.command === 'preservesVectorUpdated') {
+      // Update image set preserves vector state in-place
+      const { imageSetPath, preservesVector } = message;
+      const asset = allAssets.find(a => a.path === imageSetPath);
+      if (asset && asset.type === 'image') {
+        asset.preservesVectorRepresentation = preservesVector;
+      }
     }
   });
 })();

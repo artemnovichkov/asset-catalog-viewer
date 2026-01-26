@@ -107,6 +107,9 @@ export class XCAssetsViewer {
         case 'toggleNamespace':
           await this.handleToggleNamespace(message, xcassetsPath, panel, (val) => pauseRefresh = val);
           break;
+        case 'togglePreservesVector':
+          await this.handleTogglePreservesVector(message, xcassetsPath, panel, (val) => pauseRefresh = val);
+          break;
       }
     });
   }
@@ -380,6 +383,53 @@ export class XCAssetsViewer {
       });
     } catch (err: any) {
       vscode.window.showErrorMessage(`Failed to update namespace: ${err.message}`);
+    } finally {
+      // Delay unpause to let file watcher events pass
+      setTimeout(() => setPauseRefresh(false), 500);
+    }
+  }
+
+  private async handleTogglePreservesVector(message: any, xcassetsPath: string, panel: vscode.WebviewPanel, setPauseRefresh: (val: boolean) => void) {
+    const { imageSetPath, preservesVector } = message;
+    const resolvedPath = this.validatePath(imageSetPath, xcassetsPath);
+    if (!resolvedPath) {
+      vscode.window.showErrorMessage('Invalid path');
+      return;
+    }
+
+    const contentsPath = path.join(resolvedPath, 'Contents.json');
+
+    setPauseRefresh(true);
+    try {
+      const data = await fs.promises.readFile(contentsPath, 'utf8');
+      const contents = JSON.parse(data);
+
+      // Update preserves-vector-representation property
+      if (preservesVector) {
+        if (!contents.properties) {
+          contents.properties = {};
+        }
+        contents.properties['preserves-vector-representation'] = true;
+      } else {
+        if (contents.properties) {
+          delete contents.properties['preserves-vector-representation'];
+          // Remove empty properties object
+          if (Object.keys(contents.properties).length === 0) {
+            delete contents.properties;
+          }
+        }
+      }
+
+      await fs.promises.writeFile(contentsPath, JSON.stringify(contents, null, 2));
+
+      // Notify webview to update state
+      panel.webview.postMessage({
+        command: 'preservesVectorUpdated',
+        imageSetPath: resolvedPath,
+        preservesVector
+      });
+    } catch (err: any) {
+      vscode.window.showErrorMessage(`Failed to update preserves vector: ${err.message}`);
     } finally {
       // Delay unpause to let file watcher events pass
       setTimeout(() => setPauseRefresh(false), 500);

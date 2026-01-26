@@ -142,6 +142,18 @@ function addFinderButtonHandler(panel, vscode) {
   }
 }
 
+// Helper: add preserves vector checkbox handler
+function addPreservesVectorHandler(vscode) {
+  const checkbox = document.getElementById('preservesVectorCheckbox');
+  if (checkbox) {
+    checkbox.addEventListener('change', (e) => {
+      const imageSetPath = e.target.dataset.path;
+      const preservesVector = e.target.checked;
+      vscode.postMessage({ command: 'togglePreservesVector', imageSetPath, preservesVector });
+    });
+  }
+}
+
 // Helper: render to panel
 function render(panel, html, vscode) {
   panel.innerHTML = html;
@@ -339,7 +351,7 @@ export async function renderImageVariantProperties(asset, filename, uri, scale, 
   const scalesText = uniqueScales.length <= 1 ? 'Single Scale' : 'Individual Scales';
   const renderAsText = asset.templateRenderingIntent === 'template' ? 'Template Image' :
     asset.templateRenderingIntent === 'original' ? 'Original Image' : 'Default';
-  const preservesVectorCheckbox = asset.preservesVectorRepresentation ? '☑' : '☐';
+  const preservesVectorChecked = asset.preservesVectorRepresentation ? 'checked' : '';
 
   const html = `
     ${section('Image Set', `
@@ -349,7 +361,10 @@ export async function renderImageVariantProperties(asset, filename, uri, scale, 
       <div class="property-row align-top">
         <span class="property-row-label">Resizing</span>
         <div style="font-size: 12px; line-height: 1.5;">
-          <div style="padding: 2px 0;">${preservesVectorCheckbox} Preserve Vector Data</div>
+          <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; padding: 2px 0;">
+            <input type="checkbox" id="preservesVectorCheckbox" ${preservesVectorChecked} data-path="${asset.path}" style="cursor: pointer;" />
+            Preserve Vector Data
+          </label>
         </div>
       </div>
       <div class="property-row align-top">
@@ -367,6 +382,7 @@ export async function renderImageVariantProperties(asset, filename, uri, scale, 
   `;
 
   render(panel, html, vscode);
+  addPreservesVectorHandler(vscode);
   renderSnippets(asset);
 }
 
@@ -393,7 +409,7 @@ export function renderProperties(asset, vscode) {
     const scalesText = uniqueScales.length <= 1 ? 'Single Scale' : 'Individual Scales';
     const renderAsText = asset.templateRenderingIntent === 'template' ? 'Template Image' :
       asset.templateRenderingIntent === 'original' ? 'Original Image' : 'Default';
-    const preservesVectorCheckbox = asset.preservesVectorRepresentation ? '☑' : '☐';
+    const preservesVectorChecked = asset.preservesVectorRepresentation ? 'checked' : '';
 
     html = section('Image Set', `
       ${nameRow(asset.name, asset.path)}
@@ -402,7 +418,10 @@ export function renderProperties(asset, vscode) {
       <div class="property-row align-top">
         <span class="property-row-label">Resizing</span>
         <div style="font-size: 12px; line-height: 1.5;">
-          <div style="padding: 2px 0;">${preservesVectorCheckbox} Preserve Vector Data</div>
+          <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; padding: 2px 0;">
+            <input type="checkbox" id="preservesVectorCheckbox" ${preservesVectorChecked} data-path="${asset.path}" style="cursor: pointer;" />
+            Preserve Vector Data
+          </label>
         </div>
       </div>
       <div class="property-row align-top">
@@ -468,7 +487,10 @@ export function renderProperties(asset, vscode) {
 
   render(panel, html, vscode);
 
-  // Add handler for namespace checkbox
+  // Add handler for preserves vector checkbox (for images)
+  addPreservesVectorHandler(vscode);
+
+  // Add handler for namespace checkbox (for folders)
   const namespaceCheckbox = document.getElementById('providesNamespaceCheckbox');
   if (namespaceCheckbox) {
     namespaceCheckbox.addEventListener('change', (e) => {
