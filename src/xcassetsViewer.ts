@@ -10,6 +10,10 @@ import {
   ConvertedDataItem
 } from './types';
 
+function xcodeJsonStringify(obj: unknown): string {
+  return JSON.stringify(obj, null, 2).replace(/" ?: ?/g, '" : ') + '\n';
+}
+
 export class XCAssetsViewer {
   constructor(private readonly context: vscode.ExtensionContext) {}
 
@@ -166,7 +170,7 @@ export class XCAssetsViewer {
 
           if (contents.colors && contents.colors[colorIndex]) {
             contents.colors[colorIndex].color = newColor;
-            await fs.promises.writeFile(contentsPath, JSON.stringify(contents, null, 2));
+            await fs.promises.writeFile(contentsPath, xcodeJsonStringify(contents));
 
             panel.webview.postMessage({
               command: 'colorUpdated',
@@ -307,7 +311,7 @@ export class XCAssetsViewer {
       await fs.promises.mkdir(colorSetPath);
       await fs.promises.writeFile(
         path.join(colorSetPath, 'Contents.json'),
-        JSON.stringify(contentsJson, null, 2)
+        xcodeJsonStringify(contentsJson)
       );
       panel.webview.postMessage({ command: 'colorSetCreated', name: colorSetName, path: colorSetPath });
     } catch (err: any) {
@@ -379,7 +383,7 @@ export class XCAssetsViewer {
         }
       }
 
-      await fs.promises.writeFile(contentsPath, JSON.stringify(contents, null, 2));
+      await fs.promises.writeFile(contentsPath, xcodeJsonStringify(contents));
 
       // Notify webview to update left panel
       panel.webview.postMessage({
@@ -426,7 +430,7 @@ export class XCAssetsViewer {
         }
       }
 
-      await fs.promises.writeFile(contentsPath, JSON.stringify(contents, null, 2));
+      await fs.promises.writeFile(contentsPath, xcodeJsonStringify(contents));
 
       // Notify webview to update state
       panel.webview.postMessage({
@@ -473,7 +477,7 @@ export class XCAssetsViewer {
         contents.properties['template-rendering-intent'] = renderAs;
       }
 
-      await fs.promises.writeFile(contentsPath, JSON.stringify(contents, null, 2));
+      await fs.promises.writeFile(contentsPath, xcodeJsonStringify(contents));
 
       // Notify webview to update state
       panel.webview.postMessage({
@@ -518,7 +522,7 @@ export class XCAssetsViewer {
         contents.properties['compression-type'] = compressionType;
       }
 
-      await fs.promises.writeFile(contentsPath, JSON.stringify(contents, null, 2));
+      await fs.promises.writeFile(contentsPath, xcodeJsonStringify(contents));
 
       panel.webview.postMessage({
         command: 'compressionUpdated',
