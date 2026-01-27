@@ -304,6 +304,13 @@ setAllAssets(flattenItems(assetsData.items));
       if (asset && asset.type === 'image') {
         asset.preservesVectorRepresentation = preservesVector;
       }
+    } else if (message.command === 'renderAsUpdated') {
+      // Update image set render as state in-place
+      const { imageSetPath, renderAs } = message;
+      const asset = allAssets.find(a => a.path === imageSetPath);
+      if (asset && asset.type === 'image') {
+        asset.templateRenderingIntent = renderAs === 'default' ? undefined : renderAs;
+      }
     }
   });
 })();

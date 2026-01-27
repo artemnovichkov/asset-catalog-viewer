@@ -771,3 +771,23 @@ body {
   border-bottom: none;
   padding-bottom: 0;
 }
+
+/* Property Select */
+.property-select {
+  flex: 1;
+  padding: 6px 8px;
+  background-color: var(--vscode-dropdown-background);
+  color: var(--vscode-dropdown-foreground);
+  border: 1px solid var(--vscode-dropdown-border);
+  border-radius: 3px;
+  font-size: 12px;
+  font-family: var(--vscode-font-family);
+  cursor: pointer;
+}
+.property-select:focus {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}
+.property-select:hover {
+  background-color: var(--vscode-dropdown-listBackground);
+}

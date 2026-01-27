@@ -110,6 +110,9 @@ export class XCAssetsViewer {
         case 'togglePreservesVector':
           await this.handleTogglePreservesVector(message, xcassetsPath, panel, (val) => pauseRefresh = val);
           break;
+        case 'changeRenderAs':
+          await this.handleChangeRenderAs(message, xcassetsPath, panel, (val) => pauseRefresh = val);
+          break;
       }
     });
   }
@@ -430,6 +433,53 @@ export class XCAssetsViewer {
       });
     } catch (err: any) {
       vscode.window.showErrorMessage(`Failed to update preserves vector: ${err.message}`);
+    } finally {
+      // Delay unpause to let file watcher events pass
+      setTimeout(() => setPauseRefresh(false), 500);
+    }
+  }
+
+  private async handleChangeRenderAs(message: any, xcassetsPath: string, panel: vscode.WebviewPanel, setPauseRefresh: (val: boolean) => void) {
+    const { imageSetPath, renderAs } = message;
+    const resolvedPath = this.validatePath(imageSetPath, xcassetsPath);
+    if (!resolvedPath) {
+      vscode.window.showErrorMessage('Invalid path');
+      return;
+    }
+
+    const contentsPath = path.join(resolvedPath, 'Contents.json');
+
+    setPauseRefresh(true);
+    try {
+      const data = await fs.promises.readFile(contentsPath, 'utf8');
+      const contents = JSON.parse(data);
+
+      // Update template-rendering-intent property
+      if (renderAs === 'default') {
+        if (contents.properties) {
+          delete contents.properties['template-rendering-intent'];
+          // Remove empty properties object
+          if (Object.keys(contents.properties).length === 0) {
+            delete contents.properties;
+          }
+        }
+      } else {
+        if (!contents.properties) {
+          contents.properties = {};
+        }
+        contents.properties['template-rendering-intent'] = renderAs;
+      }
+
+      await fs.promises.writeFile(contentsPath, JSON.stringify(contents, null, 2));
+
+      // Notify webview to update state
+      panel.webview.postMessage({
+        command: 'renderAsUpdated',
+        imageSetPath: resolvedPath,
+        renderAs
+      });
+    } catch (err: any) {
+      vscode.window.showErrorMessage(`Failed to update render as: ${err.message}`);
     } finally {
       // Delay unpause to let file watcher events pass
       setTimeout(() => setPauseRefresh(false), 500);

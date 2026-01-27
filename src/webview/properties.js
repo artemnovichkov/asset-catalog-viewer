@@ -154,6 +154,32 @@ function addPreservesVectorHandler(vscode) {
   }
 }
 
+// Helper: add render as select handler
+function addRenderAsHandler(vscode) {
+  const select = document.getElementById('renderAsSelect');
+  if (select) {
+    select.addEventListener('change', (e) => {
+      const imageSetPath = e.target.dataset.path;
+      const renderAs = e.target.value;
+      vscode.postMessage({ command: 'changeRenderAs', imageSetPath, renderAs });
+    });
+  }
+}
+
+// Helper: render "Render As" select
+function renderAsSelect(templateRenderingIntent, path) {
+  const value = templateRenderingIntent || 'default';
+  return `
+    <div class="property-row">
+      <span class="property-row-label">Render As</span>
+      <select id="renderAsSelect" data-path="${path}" class="property-select">
+        <option value="default" ${value === 'default' ? 'selected' : ''}>Default</option>
+        <option value="original" ${value === 'original' ? 'selected' : ''}>Original Image</option>
+        <option value="template" ${value === 'template' ? 'selected' : ''}>Template Image</option>
+      </select>
+    </div>`;
+}
+
 // Helper: render to panel
 function render(panel, html, vscode) {
   panel.innerHTML = html;
@@ -349,14 +375,12 @@ export async function renderImageVariantProperties(asset, filename, uri, scale, 
 
   const uniqueScales = [...new Set(asset.images.map(i => i.scale))];
   const scalesText = uniqueScales.length <= 1 ? 'Single Scale' : 'Individual Scales';
-  const renderAsText = asset.templateRenderingIntent === 'template' ? 'Template Image' :
-    asset.templateRenderingIntent === 'original' ? 'Original Image' : 'Default';
   const preservesVectorChecked = asset.preservesVectorRepresentation ? 'checked' : '';
 
   const html = `
     ${section('Image Set', `
       ${nameRow(asset.name, asset.path)}
-      ${row('Render As', renderAsText)}
+      ${renderAsSelect(asset.templateRenderingIntent, asset.path)}
       ${row('Compression', getCompressionText(asset.compressionType))}
       <div class="property-row align-top">
         <span class="property-row-label">Resizing</span>
@@ -383,6 +407,7 @@ export async function renderImageVariantProperties(asset, filename, uri, scale, 
 
   render(panel, html, vscode);
   addPreservesVectorHandler(vscode);
+  addRenderAsHandler(vscode);
   renderSnippets(asset);
 }
 
@@ -407,13 +432,11 @@ export function renderProperties(asset, vscode) {
     const idioms = collectIdioms(asset.images);
     const uniqueScales = [...new Set(asset.images.map(i => i.scale))];
     const scalesText = uniqueScales.length <= 1 ? 'Single Scale' : 'Individual Scales';
-    const renderAsText = asset.templateRenderingIntent === 'template' ? 'Template Image' :
-      asset.templateRenderingIntent === 'original' ? 'Original Image' : 'Default';
     const preservesVectorChecked = asset.preservesVectorRepresentation ? 'checked' : '';
 
     html = section('Image Set', `
       ${nameRow(asset.name, asset.path)}
-      ${row('Render As', renderAsText)}
+      ${renderAsSelect(asset.templateRenderingIntent, asset.path)}
       ${row('Compression', getCompressionText(asset.compressionType))}
       <div class="property-row align-top">
         <span class="property-row-label">Resizing</span>
@@ -489,6 +512,9 @@ export function renderProperties(asset, vscode) {
 
   // Add handler for preserves vector checkbox (for images)
   addPreservesVectorHandler(vscode);
+
+  // Add handler for render as select (for images)
+  addRenderAsHandler(vscode);
 
   // Add handler for namespace checkbox (for folders)
   const namespaceCheckbox = document.getElementById('providesNamespaceCheckbox');
