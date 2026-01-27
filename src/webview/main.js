@@ -311,6 +311,13 @@ setAllAssets(flattenItems(assetsData.items));
       if (asset && asset.type === 'image') {
         asset.templateRenderingIntent = renderAs === 'default' ? undefined : renderAs;
       }
+    } else if (message.command === 'compressionUpdated') {
+      // Update image set compression state in-place
+      const { imageSetPath, compressionType } = message;
+      const asset = allAssets.find(a => a.path === imageSetPath);
+      if (asset && asset.type === 'image') {
+        asset.compressionType = compressionType === 'inherited' ? undefined : compressionType;
+      }
     }
   });
 })();

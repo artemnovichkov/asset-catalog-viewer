@@ -381,7 +381,7 @@ export async function renderImageVariantProperties(asset, filename, uri, scale, 
     ${section('Image Set', `
       ${nameRow(asset.name, asset.path)}
       ${renderAsSelect(asset.templateRenderingIntent, asset.path)}
-      ${row('Compression', getCompressionText(asset.compressionType))}
+      ${compressionSelect(asset.compressionType, asset.path)}
       <div class="property-row align-top">
         <span class="property-row-label">Resizing</span>
         <div style="font-size: 12px; line-height: 1.5;">
@@ -408,19 +408,43 @@ export async function renderImageVariantProperties(asset, filename, uri, scale, 
   render(panel, html, vscode);
   addPreservesVectorHandler(vscode);
   addRenderAsHandler(vscode);
+  addCompressionHandler(vscode);
   renderSnippets(asset);
 }
 
-// Helper: get compression text
-function getCompressionText(compressionType) {
-  switch (compressionType) {
-    case 'automatic': return 'Automatic';
-    case 'lossless': return 'Lossless';
-    case 'lossy': return 'Basic';
-    case 'gpu-optimized-best': return 'GPU Best Quality';
-    case 'gpu-optimized-smallest': return 'GPU Smallest Size';
-    default: return 'Inherited (Automatic)';
+// Helper: add compression select handler
+function addCompressionHandler(vscode) {
+  const select = document.getElementById('compressionSelect');
+  if (select) {
+    select.addEventListener('change', (e) => {
+      const imageSetPath = e.target.dataset.path;
+      const compressionType = e.target.value;
+      vscode.postMessage({ command: 'changeCompression', imageSetPath, compressionType });
+    });
   }
+}
+
+// Helper: render compression select
+function compressionSelect(compressionType, path) {
+  const value = compressionType || 'inherited';
+  const options = [
+    { value: 'inherited', label: 'Inherited (Automatic)' },
+    { value: 'automatic', label: 'Automatic' },
+    { value: 'lossless', label: 'Lossless' },
+    { value: 'lossy', label: 'Basic' },
+    { value: 'gpu-optimized-best', label: 'GPU Best Quality' },
+    { value: 'gpu-optimized-smallest', label: 'GPU Smallest Size' },
+  ];
+  const optionsHtml = options.map(o =>
+    `<option value="${o.value}" ${value === o.value ? 'selected' : ''}>${o.label}</option>`
+  ).join('');
+  return `
+    <div class="property-row">
+      <span class="property-row-label">Compression</span>
+      <select id="compressionSelect" data-path="${path}" class="property-select">
+        ${optionsHtml}
+      </select>
+    </div>`;
 }
 
 // Render general properties for asset
@@ -437,7 +461,7 @@ export function renderProperties(asset, vscode) {
     html = section('Image Set', `
       ${nameRow(asset.name, asset.path)}
       ${renderAsSelect(asset.templateRenderingIntent, asset.path)}
-      ${row('Compression', getCompressionText(asset.compressionType))}
+      ${compressionSelect(asset.compressionType, asset.path)}
       <div class="property-row align-top">
         <span class="property-row-label">Resizing</span>
         <div style="font-size: 12px; line-height: 1.5;">
@@ -515,6 +539,9 @@ export function renderProperties(asset, vscode) {
 
   // Add handler for render as select (for images)
   addRenderAsHandler(vscode);
+
+  // Add handler for compression select (for images)
+  addCompressionHandler(vscode);
 
   // Add handler for namespace checkbox (for folders)
   const namespaceCheckbox = document.getElementById('providesNamespaceCheckbox');

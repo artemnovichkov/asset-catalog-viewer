@@ -113,6 +113,9 @@ export class XCAssetsViewer {
         case 'changeRenderAs':
           await this.handleChangeRenderAs(message, xcassetsPath, panel, (val) => pauseRefresh = val);
           break;
+        case 'changeCompression':
+          await this.handleChangeCompression(message, xcassetsPath, panel, (val) => pauseRefresh = val);
+          break;
       }
     });
   }
@@ -482,6 +485,49 @@ export class XCAssetsViewer {
       vscode.window.showErrorMessage(`Failed to update render as: ${err.message}`);
     } finally {
       // Delay unpause to let file watcher events pass
+      setTimeout(() => setPauseRefresh(false), 500);
+    }
+  }
+
+  private async handleChangeCompression(message: any, xcassetsPath: string, panel: vscode.WebviewPanel, setPauseRefresh: (val: boolean) => void) {
+    const { imageSetPath, compressionType } = message;
+    const resolvedPath = this.validatePath(imageSetPath, xcassetsPath);
+    if (!resolvedPath) {
+      vscode.window.showErrorMessage('Invalid path');
+      return;
+    }
+
+    const contentsPath = path.join(resolvedPath, 'Contents.json');
+
+    setPauseRefresh(true);
+    try {
+      const data = await fs.promises.readFile(contentsPath, 'utf8');
+      const contents = JSON.parse(data);
+
+      if (compressionType === 'inherited') {
+        if (contents.properties) {
+          delete contents.properties['compression-type'];
+          if (Object.keys(contents.properties).length === 0) {
+            delete contents.properties;
+          }
+        }
+      } else {
+        if (!contents.properties) {
+          contents.properties = {};
+        }
+        contents.properties['compression-type'] = compressionType;
+      }
+
+      await fs.promises.writeFile(contentsPath, JSON.stringify(contents, null, 2));
+
+      panel.webview.postMessage({
+        command: 'compressionUpdated',
+        imageSetPath: resolvedPath,
+        compressionType
+      });
+    } catch (err: any) {
+      vscode.window.showErrorMessage(`Failed to update compression: ${err.message}`);
+    } finally {
       setTimeout(() => setPauseRefresh(false), 500);
     }
   }
