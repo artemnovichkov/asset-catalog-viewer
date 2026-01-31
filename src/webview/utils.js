@@ -8,6 +8,19 @@ export function escapeHtml(unsafe) {
     .replace(/'/g, "&#039;");
 }
 
+// Parse a color component string to 0-255 range.
+// Handles: hex ("0xFF"), float with decimal ("0.478"), integer ("255")
+export function componentTo255(value) {
+  const str = String(value);
+  if (str.startsWith('0x') || str.startsWith('0X')) {
+    return parseInt(str, 16);
+  }
+  if (str.includes('.')) {
+    return Math.round(parseFloat(str) * 255);
+  }
+  return Math.round(parseFloat(str));
+}
+
 // Get CSS color value from asset color object
 export function getColorValue(color) {
   if (!color) return '#000000';
@@ -15,13 +28,9 @@ export function getColorValue(color) {
   if (!components) return '#000000';
 
   if (components.red !== undefined) {
-    const redVal = parseFloat(components.red);
-    const greenVal = parseFloat(components.green);
-    const blueVal = parseFloat(components.blue);
-
-    const r = redVal > 1 ? Math.round(redVal) : Math.round(redVal * 255);
-    const g = greenVal > 1 ? Math.round(greenVal) : Math.round(greenVal * 255);
-    const b = blueVal > 1 ? Math.round(blueVal) : Math.round(blueVal * 255);
+    const r = componentTo255(components.red);
+    const g = componentTo255(components.green);
+    const b = componentTo255(components.blue);
     return `rgb(${r}, ${g}, ${b})`;
   }
 

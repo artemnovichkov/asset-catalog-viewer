@@ -1,4 +1,4 @@
-import { escapeHtml } from './utils.js';
+import { escapeHtml, componentTo255 } from './utils.js';
 
 // Constants
 const ALL_DEVICES = [
@@ -267,14 +267,23 @@ function renderSnippets(asset) {
   }
 }
 
+// Helper: parse a color component to its numeric value (hex→int, otherwise parseFloat)
+function parseComponent(value) {
+  const str = String(value);
+  if (str.startsWith('0x') || str.startsWith('0X')) {
+    return parseInt(str, 16);
+  }
+  return parseFloat(str);
+}
+
 // Helper: convert color components to hex (RRGGBBAA)
 function colorToHex(color) {
   if (!color || !color.components) return 'FFFFFFFF';
   const c = color.components;
-  const r = Math.round(parseFloat(c.red || 0) * 255);
-  const g = Math.round(parseFloat(c.green || 0) * 255);
-  const b = Math.round(parseFloat(c.blue || 0) * 255);
-  const a = Math.round(parseFloat(c.alpha || 1) * 255);
+  const r = componentTo255(c.red || '0');
+  const g = componentTo255(c.green || '0');
+  const b = componentTo255(c.blue || '0');
+  const a = componentTo255(c.alpha || '1.0');
   return [r, g, b, a].map(v => v.toString(16).padStart(2, '0')).join('').toUpperCase();
 }
 
@@ -290,10 +299,10 @@ export function renderColorProperties(asset, colorIndex, vscode) {
 
   let componentsHtml = '';
   if (components.red !== undefined) {
-    const r = parseFloat(components.red);
-    const g = parseFloat(components.green);
-    const b = parseFloat(components.blue);
-    const a = components.alpha !== undefined ? parseFloat(components.alpha) : 1;
+    const r = parseComponent(components.red);
+    const g = parseComponent(components.green);
+    const b = parseComponent(components.blue);
+    const a = components.alpha !== undefined ? parseComponent(components.alpha) : 1;
     componentsHtml = row('Components', `R: ${r}, G: ${g}, B: ${b}, A: ${a}`);
   }
 
