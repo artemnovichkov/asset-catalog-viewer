@@ -186,14 +186,18 @@ function render(panel, html, vscode) {
   addFinderButtonHandler(panel, vscode);
 }
 
-// Helper: convert string to camelCase (e.g. "brand-color" -> "brandColor", "My Icon" -> "myIcon")
+// Helper: convert string to camelCase (e.g. "brand-color" -> "brandColor", "My Icon" -> "myIcon", "8swift" -> "_8Swift")
 function toCamelCase(str) {
-  return str
+  let result = str
     .replace(/[^a-zA-Z0-9]/g, ' ') // Replace non-alphanumeric with space
     .replace(/(?:^\w|[A-Z]|\b\w)/g, (word, index) => {
       return index === 0 ? word.toLowerCase() : word.toUpperCase();
     })
     .replace(/\s+/g, '');
+  if (/^\d/.test(result)) {
+    result = '_' + result.replace(/^(\d+)([a-z])/, (_, digits, ch) => digits + ch.toUpperCase());
+  }
+  return result;
 }
 
 // Helper: render SwiftUI snippets
@@ -228,8 +232,8 @@ function renderSnippets(asset) {
     processedName = name;
   } else {
     // Remove suffixes like "Color", "Icon", "Image" (case-insensitive) for colors and images
-    name = name.replace(/(?:Color|Icon|Image)$/i, '');
-    processedName = toCamelCase(name);
+    const stripped = name.replace(/(?:Color|Icon|Image)$/i, '');
+    processedName = toCamelCase(stripped || name);
   }
 
   const code = template.replace('{name}', processedName);
