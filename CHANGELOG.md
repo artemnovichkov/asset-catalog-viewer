@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.0] - 2026-01-31
+
+### Added
+- Inline color editor with Input Method picker (Floating Point, 8-bit, 8-bit Hexadecimal)
+- RGB sliders and number inputs for Floating Point and 8-bit modes
+- Hex text field for 8-bit Hexadecimal mode
+- Opacity slider for all color input modes
+
+### Fixed
+- Color parsing for 8-bit integer and 8-bit hexadecimal component formats
+- Color swatch updates in left panel when editing colors
+- SwiftUI code snippet format: `Color.name` instead of `Color(.name)`
+- Code generation for asset names starting with digits (e.g. `_8Swift`)
+- Code generation for assets named "Color" no longer produces empty name
+
 ## [0.11.4] - 2026-01-27
 
 ### Added
