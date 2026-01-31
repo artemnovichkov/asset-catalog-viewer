@@ -120,6 +120,9 @@ export class XCAssetsViewer {
         case 'changeCompression':
           await this.handleChangeCompression(message, xcassetsPath, panel, (val) => pauseRefresh = val);
           break;
+        case 'updateColor':
+          await this.handleUpdateColor(message, xcassetsPath, panel, (val) => pauseRefresh = val);
+          break;
       }
     });
   }
@@ -531,6 +534,36 @@ export class XCAssetsViewer {
       });
     } catch (err: any) {
       vscode.window.showErrorMessage(`Failed to update compression: ${err.message}`);
+    } finally {
+      setTimeout(() => setPauseRefresh(false), 500);
+    }
+  }
+
+  private async handleUpdateColor(message: any, xcassetsPath: string, panel: vscode.WebviewPanel, setPauseRefresh: (val: boolean) => void) {
+    const { colorSetPath, colorIndex, newColor } = message;
+    const resolvedPath = this.validatePath(colorSetPath, xcassetsPath);
+    if (!resolvedPath) {
+      return;
+    }
+
+    const contentsPath = path.join(resolvedPath, 'Contents.json');
+    setPauseRefresh(true);
+    try {
+      const contentsData = await fs.promises.readFile(contentsPath, 'utf8');
+      const contents = JSON.parse(contentsData);
+      if (contents.colors && contents.colors[colorIndex]) {
+        contents.colors[colorIndex].color = newColor;
+        await fs.promises.writeFile(contentsPath, xcodeJsonStringify(contents));
+        panel.webview.postMessage({
+          command: 'colorUpdated',
+          colorSetPath: resolvedPath,
+          colorIndex,
+          newColor,
+          source: 'inline'
+        });
+      }
+    } catch {
+      // Silently ignore errors for inline updates
     } finally {
       setTimeout(() => setPauseRefresh(false), 500);
     }

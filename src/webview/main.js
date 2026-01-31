@@ -10,6 +10,7 @@ import { initResizers } from './resizer.js';
 import { renderAssetList, toggleFolder } from './assetList.js';
 import { selectAsset, deselectAsset, deselectVariant } from './selection.js';
 import { startRename, getIsRenaming } from './rename.js';
+import { componentTo255 } from './utils.js';
 
 // Initialize
 const vscode = acquireVsCodeApi();
@@ -257,27 +258,31 @@ setAllAssets(flattenItems(assetsData.items));
       if (asset && asset.type === 'color' && asset.colors[colorIndex]) {
         asset.colors[colorIndex].color = newColor;
 
-        // Update the color swatch in preview
-        const variantItem = document.querySelector(`.variant-item[data-color-index="${colorIndex}"]`);
-        if (variantItem) {
-          const colorSlot = variantItem.querySelector('.color-slot');
-          if (colorSlot && newColor.components) {
-            const c = newColor.components;
-            const r = Math.round(parseFloat(c.red || 0) * 255);
-            const g = Math.round(parseFloat(c.green || 0) * 255);
-            const b = Math.round(parseFloat(c.blue || 0) * 255);
-            const a = parseFloat(c.alpha || 1);
-            colorSlot.style.backgroundColor = `rgba(${r}, ${g}, ${b}, ${a})`;
+        // Update color swatches in preview and left panel
+        if (newColor.components) {
+          const c = newColor.components;
+          const r = componentTo255(c.red || '0');
+          const g = componentTo255(c.green || '0');
+          const b = componentTo255(c.blue || '0');
+          const a = parseFloat(c.alpha || 1);
+          const rgba = `rgba(${r}, ${g}, ${b}, ${a})`;
+          const variantItem = document.querySelector(`.variant-item[data-color-index="${colorIndex}"]`);
+          if (variantItem) {
+            const colorSlot = variantItem.querySelector('.color-slot');
+            if (colorSlot) colorSlot.style.backgroundColor = rgba;
           }
+          const thumb = document.querySelector(`.asset-list-item[data-path="${colorSetPath}"] .asset-thumbnail`);
+          if (thumb) thumb.style.backgroundColor = rgba;
         }
 
-        // Update properties panel if this color is selected
-        const selectedVariant = document.querySelector('.variant-item.selected[data-color-index]');
-        if (selectedVariant && parseInt(selectedVariant.dataset.colorIndex) === colorIndex) {
-          // Re-render color properties
-          import('./properties.js').then(({ renderColorProperties }) => {
-            renderColorProperties(asset, colorIndex, vscode);
-          });
+        // Re-render properties only for external updates (not inline editor)
+        if (message.source !== 'inline') {
+          const selectedVariant = document.querySelector('.variant-item.selected[data-color-index]');
+          if (selectedVariant && parseInt(selectedVariant.dataset.colorIndex) === colorIndex) {
+            import('./properties.js').then(({ renderColorProperties }) => {
+              renderColorProperties(asset, colorIndex, vscode);
+            });
+          }
         }
       }
     } else if (message.command === 'namespaceUpdated') {

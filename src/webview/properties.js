@@ -287,6 +287,237 @@ function colorToHex(color) {
   return [r, g, b, a].map(v => v.toString(16).padStart(2, '0')).join('').toUpperCase();
 }
 
+// Detect input method from color components
+function detectInputMethod(components) {
+  if (!components || !components.red) return 'float';
+  const red = String(components.red);
+  if (red.startsWith('0x') || red.startsWith('0X')) return 'hex';
+  if (red.includes('.')) return 'float';
+  return '8bit';
+}
+
+// Format a 0-255 value as a component string for the given input method
+function formatComponentValue(value255, method) {
+  const v = Math.max(0, Math.min(255, Math.round(value255)));
+  if (method === 'hex') return '0x' + v.toString(16).toUpperCase().padStart(2, '0');
+  if (method === '8bit') return String(v);
+  return (v / 255).toFixed(3);
+}
+
+// Read current RGB (as 0-255) and alpha from color editor DOM
+function readColorEditorValues() {
+  const hexInput = document.getElementById('colorHexInput');
+  let r255, g255, b255;
+  if (hexInput) {
+    const hex = hexInput.value.replace('#', '');
+    r255 = parseInt(hex.substring(0, 2), 16) || 0;
+    g255 = parseInt(hex.substring(2, 4), 16) || 0;
+    b255 = parseInt(hex.substring(4, 6), 16) || 0;
+  } else {
+    const sliders = document.querySelectorAll('.color-slider[data-channel]');
+    const vals = {};
+    sliders.forEach(s => { vals[s.dataset.channel] = parseFloat(s.value); });
+    const isFloat = sliders.length > 0 && parseFloat(sliders[0].max) <= 1;
+    if (isFloat) {
+      r255 = Math.round((vals.red || 0) * 255);
+      g255 = Math.round((vals.green || 0) * 255);
+      b255 = Math.round((vals.blue || 0) * 255);
+    } else {
+      r255 = Math.round(vals.red || 0);
+      g255 = Math.round(vals.green || 0);
+      b255 = Math.round(vals.blue || 0);
+    }
+  }
+  const opacityInput = document.getElementById('colorOpacityInput');
+  const alpha = opacityInput ? parseInt(opacityInput.value) / 100 : 1;
+  return { r255, g255, b255, alpha };
+}
+
+// Generate color editor HTML
+function colorEditorHtml(components, inputMethod) {
+  const r255 = componentTo255(components.red);
+  const g255 = componentTo255(components.green);
+  const b255 = componentTo255(components.blue);
+  const alpha = parseFloat(components.alpha || '1');
+  const opacity = Math.round(alpha * 100);
+
+  const methodSelect = `
+    <div class="color-input-row">
+      <span class="color-input-label">Input Method</span>
+      <select id="inputMethodSelect" class="property-select">
+        <option value="float" ${inputMethod === 'float' ? 'selected' : ''}>Floating Point (0.0-1.0)</option>
+        <option value="8bit" ${inputMethod === '8bit' ? 'selected' : ''}>8-bit (0-255)</option>
+        <option value="hex" ${inputMethod === 'hex' ? 'selected' : ''}>8-bit Hexadecimal</option>
+      </select>
+    </div>`;
+
+  let channelInputs;
+  if (inputMethod === 'hex') {
+    const hex = '#' + [r255, g255, b255].map(v => v.toString(16).padStart(2, '0')).join('').toUpperCase();
+    channelInputs = `
+      <div class="color-input-row">
+        <span class="color-input-label">Hex</span>
+        <input type="text" class="color-hex-input" id="colorHexInput" value="${hex}" maxlength="7" />
+      </div>`;
+  } else {
+    const max = inputMethod === 'float' ? 1 : 255;
+    const step = inputMethod === 'float' ? 0.001 : 1;
+    const channels = [
+      { key: 'red', label: 'Red', val255: r255 },
+      { key: 'green', label: 'Green', val255: g255 },
+      { key: 'blue', label: 'Blue', val255: b255 }
+    ];
+    channelInputs = channels.map(({ key, label, val255 }) => {
+      const sliderVal = inputMethod === 'float' ? (val255 / 255) : val255;
+      const displayVal = inputMethod === 'float' ? (val255 / 255).toFixed(3) : val255;
+      return `
+        <div class="color-input-row">
+          <span class="color-input-label">${label}</span>
+          <input type="range" class="color-slider" data-channel="${key}" min="0" max="${max}" step="${step}" value="${sliderVal}" />
+          <input type="number" class="color-number-input" data-channel="${key}" min="0" max="${max}" step="${step}" value="${displayVal}" />
+        </div>`;
+    }).join('');
+  }
+
+  const opacitySlider = `
+    <div class="color-input-row">
+      <span class="color-input-label">Opacity</span>
+      <input type="range" class="color-slider" id="colorOpacitySlider" min="0" max="100" value="${opacity}" />
+      <div class="color-opacity-wrapper">
+        <input type="number" class="color-number-input" id="colorOpacityInput" min="0" max="100" step="1" value="${opacity}" />
+        <span class="color-opacity-percent">%</span>
+      </div>
+    </div>`;
+
+  return methodSelect + channelInputs + opacitySlider;
+}
+
+// Wire up color editor event handlers
+function addColorEditorHandlers(asset, colorIndex, vscode) {
+  const colorSpace = (asset.colors[colorIndex].color || {})['color-space'] || 'srgb';
+
+  function updateSwatch(r255, g255, b255) {
+    const rgb = `rgb(${r255}, ${g255}, ${b255})`;
+    const swatch = document.querySelector(`.variant-item[data-color-index="${colorIndex}"] .color-slot`);
+    if (swatch) swatch.style.backgroundColor = rgb;
+    const thumb = document.querySelector(`.asset-list-item[data-path="${asset.path}"] .asset-thumbnail`);
+    if (thumb) thumb.style.backgroundColor = rgb;
+  }
+
+  function sendUpdate(r255, g255, b255, alpha, method) {
+    const newComponents = {
+      red: formatComponentValue(r255, method),
+      green: formatComponentValue(g255, method),
+      blue: formatComponentValue(b255, method),
+      alpha: alpha.toFixed(3)
+    };
+    const newColor = { 'color-space': colorSpace, components: newComponents };
+    asset.colors[colorIndex].color = newColor;
+    const btn = document.getElementById('showColorPanelBtn');
+    if (btn) btn.dataset.colorHex = colorToHex(newColor);
+    vscode.postMessage({ command: 'updateColor', colorSetPath: asset.path, colorIndex, newColor });
+  }
+
+  // Input method change → re-render
+  const methodSelect = document.getElementById('inputMethodSelect');
+  if (methodSelect) {
+    methodSelect.addEventListener('change', () => {
+      const { r255, g255, b255, alpha } = readColorEditorValues();
+      const newMethod = methodSelect.value;
+      const newComponents = {
+        red: formatComponentValue(r255, newMethod),
+        green: formatComponentValue(g255, newMethod),
+        blue: formatComponentValue(b255, newMethod),
+        alpha: alpha.toFixed(3)
+      };
+      const newColor = { 'color-space': colorSpace, components: newComponents };
+      asset.colors[colorIndex].color = newColor;
+      renderColorProperties(asset, colorIndex, vscode);
+      vscode.postMessage({ command: 'updateColor', colorSetPath: asset.path, colorIndex, newColor });
+    });
+  }
+
+  // RGB sliders
+  document.querySelectorAll('.color-slider[data-channel]').forEach(slider => {
+    const numberInput = document.querySelector(`.color-number-input[data-channel="${slider.dataset.channel}"]`);
+    slider.addEventListener('input', () => {
+      if (numberInput) {
+        const isFloat = parseFloat(slider.max) <= 1;
+        numberInput.value = isFloat ? parseFloat(slider.value).toFixed(3) : Math.round(parseFloat(slider.value));
+      }
+      const { r255, g255, b255 } = readColorEditorValues();
+      updateSwatch(r255, g255, b255);
+    });
+    slider.addEventListener('change', () => {
+      const method = document.getElementById('inputMethodSelect').value;
+      const { r255, g255, b255, alpha } = readColorEditorValues();
+      sendUpdate(r255, g255, b255, alpha, method);
+    });
+  });
+
+  // RGB number inputs
+  document.querySelectorAll('.color-number-input[data-channel]').forEach(input => {
+    const slider = document.querySelector(`.color-slider[data-channel="${input.dataset.channel}"]`);
+    input.addEventListener('input', () => {
+      if (slider) slider.value = input.value;
+      const { r255, g255, b255 } = readColorEditorValues();
+      updateSwatch(r255, g255, b255);
+    });
+    input.addEventListener('change', () => {
+      if (slider) slider.value = input.value;
+      const method = document.getElementById('inputMethodSelect').value;
+      const { r255, g255, b255, alpha } = readColorEditorValues();
+      sendUpdate(r255, g255, b255, alpha, method);
+    });
+  });
+
+  // Hex input
+  const hexInput = document.getElementById('colorHexInput');
+  if (hexInput) {
+    hexInput.addEventListener('input', () => {
+      const hex = hexInput.value.replace('#', '');
+      if (/^[0-9a-fA-F]{6}$/.test(hex)) {
+        const r = parseInt(hex.substring(0, 2), 16);
+        const g = parseInt(hex.substring(2, 4), 16);
+        const b = parseInt(hex.substring(4, 6), 16);
+        updateSwatch(r, g, b);
+      }
+    });
+    hexInput.addEventListener('change', () => {
+      const hex = hexInput.value.replace('#', '');
+      if (/^[0-9a-fA-F]{6}$/.test(hex)) {
+        const { r255, g255, b255, alpha } = readColorEditorValues();
+        sendUpdate(r255, g255, b255, alpha, 'hex');
+      }
+    });
+  }
+
+  // Opacity slider + input
+  const opacitySlider = document.getElementById('colorOpacitySlider');
+  const opacityInput = document.getElementById('colorOpacityInput');
+  if (opacitySlider) {
+    opacitySlider.addEventListener('input', () => {
+      if (opacityInput) opacityInput.value = opacitySlider.value;
+    });
+    opacitySlider.addEventListener('change', () => {
+      const method = document.getElementById('inputMethodSelect').value;
+      const { r255, g255, b255, alpha } = readColorEditorValues();
+      sendUpdate(r255, g255, b255, alpha, method);
+    });
+  }
+  if (opacityInput) {
+    opacityInput.addEventListener('input', () => {
+      if (opacitySlider) opacitySlider.value = opacityInput.value;
+    });
+    opacityInput.addEventListener('change', () => {
+      if (opacitySlider) opacitySlider.value = opacityInput.value;
+      const method = document.getElementById('inputMethodSelect').value;
+      const { r255, g255, b255, alpha } = readColorEditorValues();
+      sendUpdate(r255, g255, b255, alpha, method);
+    });
+  }
+}
+
 // Render color properties for specific variant
 export function renderColorProperties(asset, colorIndex, vscode) {
   const panel = document.getElementById('propertiesPanel');
@@ -296,16 +527,7 @@ export function renderColorProperties(asset, colorIndex, vscode) {
   const color = colorItem.color || {};
   const colorSpace = color['color-space'] || 'srgb';
   const components = color.components || {};
-
-  let componentsHtml = '';
-  if (components.red !== undefined) {
-    const r = parseComponent(components.red);
-    const g = parseComponent(components.green);
-    const b = parseComponent(components.blue);
-    const a = components.alpha !== undefined ? parseComponent(components.alpha) : 1;
-    componentsHtml = row('Components', `R: ${r}, G: ${g}, B: ${b}, A: ${a}`);
-  }
-
+  const inputMethod = detectInputMethod(components);
   const hexColor = colorToHex(color);
 
   const html = `
@@ -320,7 +542,7 @@ export function renderColorProperties(asset, colorIndex, vscode) {
     `)}
     ${section('Color', `
       ${row('Color Space', colorSpace)}
-      ${componentsHtml}
+      ${colorEditorHtml(components, inputMethod)}
       <div style="margin-top: 12px;">
         <button class="color-panel-button" id="showColorPanelBtn" data-path="${asset.path}" data-color-index="${colorIndex}" data-color-hex="${hexColor}">
           Show Color Panel
@@ -330,8 +552,8 @@ export function renderColorProperties(asset, colorIndex, vscode) {
   `;
 
   render(panel, html, vscode);
+  addColorEditorHandlers(asset, colorIndex, vscode);
 
-  // Add click handler for color panel button
   const colorPanelBtn = document.getElementById('showColorPanelBtn');
   if (colorPanelBtn) {
     colorPanelBtn.addEventListener('click', () => {
