@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.1] - 2026-02-15
+
+### Added
+- Code generation now supports namespaces for folders
+
+### Changed
+- Improved code generation formatting for asset names with digits
+
+### Fixed
+- Dimensions for PDF assets
+- Keyboard shortcuts no longer trigger when typing in input fields
+
 ## [0.13.0] - 2026-02-15
 
 ### Added
