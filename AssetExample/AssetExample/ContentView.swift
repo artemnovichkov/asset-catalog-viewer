@@ -11,9 +11,9 @@ struct ContentView: View {
     var body: some View {
         VStack {
             Text("Hello, Asset Catalog!")
-            Color.Colors.P_3
+            Color.P_3
             Color.brand
-            Image(._3Swift)
+            Image(.swift)
             Image(.handThumbsup)
         }
         .padding()

@@ -241,10 +241,28 @@ setAllAssets(flattenItems(assetsData.items));
     addAssetMenu.classList.remove('visible');
   });
 
+  document.getElementById('addImageSet').addEventListener('click', () => {
+    let targetFolderPath = null;
+    if (currentSelectedAssetIndex >= 0) {
+      const selected = allAssets[currentSelectedAssetIndex];
+      if (selected.type === 'folder') {
+        targetFolderPath = selected.path;
+      }
+    }
+    vscode.postMessage({ command: 'addImageSet', targetFolderPath });
+    addAssetMenu.classList.remove('visible');
+  });
+
   // Handle messages from extension
   window.addEventListener('message', (event) => {
     const message = event.data;
-    if (message.command === 'colorSetCreated') {
+    if (message.command === 'imageSetCreated') {
+      const newPath = message.path;
+      const idx = allAssets.findIndex(a => a.path === newPath);
+      if (idx >= 0) {
+        selectAsset(idx, vscode);
+      }
+    } else if (message.command === 'colorSetCreated') {
       // Find and select the new colorset after refresh
       const newPath = message.path;
       const idx = allAssets.findIndex(a => a.path === newPath);

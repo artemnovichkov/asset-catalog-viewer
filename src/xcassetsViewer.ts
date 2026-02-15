@@ -102,6 +102,12 @@ export class XCAssetsViewer {
         case 'addColorSet':
           await this.handleAddColorSet(message, xcassetsPath, panel);
           break;
+        case 'addImageSet':
+          await this.handleAddImageSet(message, xcassetsPath, panel);
+          break;
+        case 'addImageToSet':
+          await this.handleAddImageToSet(message, xcassetsPath);
+          break;
         case 'quicklook':
           this.handleQuickLook(message, xcassetsPath);
           break;
@@ -319,6 +325,107 @@ export class XCAssetsViewer {
       panel.webview.postMessage({ command: 'colorSetCreated', name: colorSetName, path: colorSetPath });
     } catch (err: any) {
       vscode.window.showErrorMessage(`Failed to create color set: ${err.message}`);
+    }
+  }
+
+  private async handleAddImageSet(message: any, xcassetsPath: string, panel: vscode.WebviewPanel) {
+    const { targetFolderPath } = message;
+    let parentDir = xcassetsPath;
+
+    if (targetFolderPath) {
+      const resolvedTarget = this.validatePath(targetFolderPath, xcassetsPath);
+      if (resolvedTarget) {
+        parentDir = resolvedTarget;
+      }
+    }
+
+    let baseName = 'Image';
+    let imageSetName = baseName;
+    let counter = 1;
+    while (fs.existsSync(path.join(parentDir, `${imageSetName}.imageset`))) {
+      imageSetName = `${baseName} ${counter}`;
+      counter++;
+    }
+
+    const imageSetPath = path.join(parentDir, `${imageSetName}.imageset`);
+    const contentsJson = {
+      images: [
+        { idiom: 'universal', scale: '1x' },
+        { idiom: 'universal', scale: '2x' },
+        { idiom: 'universal', scale: '3x' }
+      ],
+      info: { author: 'xcode', version: 1 }
+    };
+
+    try {
+      await fs.promises.mkdir(imageSetPath);
+      await fs.promises.writeFile(
+        path.join(imageSetPath, 'Contents.json'),
+        xcodeJsonStringify(contentsJson)
+      );
+      panel.webview.postMessage({ command: 'imageSetCreated', name: imageSetName, path: imageSetPath });
+    } catch (err: any) {
+      vscode.window.showErrorMessage(`Failed to create image set: ${err.message}`);
+    }
+  }
+
+  private async handleAddImageToSet(message: any, xcassetsPath: string) {
+    const { assetPath, idiom, scale, appearanceKey } = message;
+    const resolvedPath = this.validatePath(assetPath, xcassetsPath);
+    if (!resolvedPath) {
+      vscode.window.showErrorMessage('Invalid path');
+      return;
+    }
+
+    const fileUris = await vscode.window.showOpenDialog({
+      canSelectMany: false,
+      filters: { 'Images': ['png', 'jpg', 'jpeg', 'pdf', 'svg', 'heic'] },
+      title: 'Select Image'
+    });
+
+    if (!fileUris || fileUris.length === 0) {
+      return;
+    }
+
+    const sourceFile = fileUris[0].fsPath;
+    const ext = path.extname(sourceFile);
+    const assetName = path.basename(resolvedPath, '.imageset');
+
+    let targetFilename: string;
+    if (scale && scale !== '1x') {
+      targetFilename = `${assetName}@${scale}${ext}`;
+    } else {
+      targetFilename = `${assetName}${ext}`;
+    }
+
+    const targetPath = path.join(resolvedPath, targetFilename);
+
+    try {
+      await fs.promises.copyFile(sourceFile, targetPath);
+
+      const contentsPath = path.join(resolvedPath, 'Contents.json');
+      const data = await fs.promises.readFile(contentsPath, 'utf8');
+      const contents = JSON.parse(data);
+
+      const imageEntry = contents.images?.find((img: any) => {
+        const matchesIdiom = img.idiom === idiom;
+        const matchesScale = scale ? img.scale === scale : !img.scale;
+        if (appearanceKey && appearanceKey !== 'any') {
+          return matchesIdiom && matchesScale &&
+            img.appearances?.some((a: any) => a.appearance === 'luminosity' && a.value === appearanceKey);
+        }
+        if (appearanceKey === 'any') {
+          return matchesIdiom && matchesScale && (!img.appearances || img.appearances.length === 0);
+        }
+        return matchesIdiom && matchesScale;
+      });
+
+      if (imageEntry) {
+        imageEntry.filename = targetFilename;
+        await fs.promises.writeFile(contentsPath, xcodeJsonStringify(contents));
+      }
+    } catch (err: any) {
+      vscode.window.showErrorMessage(`Failed to add image: ${err.message}`);
     }
   }
 

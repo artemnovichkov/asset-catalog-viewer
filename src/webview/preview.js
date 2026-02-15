@@ -1,3 +1,4 @@
+import { allAssets, currentSelectedAssetIndex, expandedFolders } from './state.js';
 import { escapeHtml, getColorValue } from './utils.js';
 import { renderPdfToCanvas } from './pdfRenderer.js';
 import { initLottiePlayer, initDotLottiePlayer } from './lottiePlayer.js';
@@ -21,10 +22,16 @@ function groupBy(items, keyFn) {
 }
 
 // Render empty slot
-function emptySlot(label, type = 'image') {
+function emptySlot(label, type = 'image', slotData = null) {
   const slotClass = type === 'color' ? 'color-slot' : 'image-slot';
+  let dataAttrs = '';
+  if (slotData) {
+    dataAttrs = ` data-asset-path="${slotData.assetPath}" data-idiom="${slotData.idiom}"`;
+    if (slotData.scale) dataAttrs += ` data-scale="${slotData.scale}"`;
+    if (slotData.appearanceKey) dataAttrs += ` data-appearance="${slotData.appearanceKey}"`;
+  }
   return `
-    <div class="slot-item">
+    <div class="slot-item${slotData ? ' empty-image-slot' : ''}"${dataAttrs}>
       <div class="${slotClass} empty"><span class="plus-icon">+</span></div>
       <div class="slot-label">${label}</div>
     </div>`;
@@ -57,6 +64,27 @@ function setupVariantClicks(panel, selector, dataAttr, handler) {
       panel.querySelectorAll(selector).forEach(v => v.classList.remove('selected'));
       item.classList.add('selected');
       await handler(item.dataset);
+    });
+  });
+}
+
+// Setup click handlers for empty image slots
+function setupEmptySlotClicks(container, vscode) {
+  container.querySelectorAll('.empty-image-slot').forEach(slot => {
+    slot.addEventListener('click', () => {
+      // Save current selection so it persists across file-watcher refresh
+      const asset = allAssets[currentSelectedAssetIndex];
+      if (asset) {
+        const state = vscode.getState() || {};
+        vscode.setState({ ...state, selectedAssetPath: asset._path });
+      }
+      vscode.postMessage({
+        command: 'addImageToSet',
+        assetPath: slot.dataset.assetPath,
+        idiom: slot.dataset.idiom,
+        scale: slot.dataset.scale || null,
+        appearanceKey: slot.dataset.appearance || null
+      });
     });
   });
 }
@@ -180,7 +208,7 @@ async function renderImagePreviewInContainer(asset, container, mainPanel, vscode
           const rowHtml = scales.map(scale => {
             const img = findImageByAppearance(images, key, scale);
             const slotLabel = `${scale}<br>${label}`;
-            return img?.filename ? imageSlot(img, slotLabel) : emptySlot(slotLabel);
+            return img?.filename ? imageSlot(img, slotLabel) : emptySlot(slotLabel, 'image', { assetPath: asset.path, idiom, scale, appearanceKey: key });
           }).join('');
           return `<div class="appearance-row">${rowHtml}</div>`;
         }).join('')}</div>`;
@@ -194,12 +222,12 @@ async function renderImagePreviewInContainer(asset, container, mainPanel, vscode
 
         slotsHtml = `<div class="appearance-stack">${appearances.map(({ key, label }) => {
           const img = findImageByAppearance(images, key);
-          return img?.filename ? imageSlot(img, label) : emptySlot(label);
+          return img?.filename ? imageSlot(img, label) : emptySlot(label, 'image', { assetPath: asset.path, idiom, appearanceKey: key });
         }).join('')}</div>`;
       } else {
         slotsHtml = ['1x', '2x', '3x'].map(scale => {
           const img = images.find(i => i.scale === scale);
-          return img?.filename ? imageSlot(img, scale) : emptySlot(scale);
+          return img?.filename ? imageSlot(img, scale) : emptySlot(scale, 'image', { assetPath: asset.path, idiom, scale });
         }).join('');
       }
 
@@ -220,6 +248,9 @@ async function renderImagePreviewInContainer(asset, container, mainPanel, vscode
       await renderImageVariantProperties(asset, item.dataset.imageFilename, item.dataset.imageUri, item.dataset.imageScale, vscode);
     });
   });
+
+  // Empty slot click handlers for adding images
+  setupEmptySlotClicks(container, vscode);
 }
 
 function renderColorPreviewInContainer(asset, container, mainPanel, vscode) {
@@ -406,7 +437,7 @@ async function renderImagePreview(asset, panel, vscode) {
           const rowHtml = scales.map(scale => {
             const img = findImageByAppearance(images, key, scale);
             const slotLabel = `${scale}<br>${label}`;
-            return img?.filename ? imageSlot(img, slotLabel) : emptySlot(slotLabel);
+            return img?.filename ? imageSlot(img, slotLabel) : emptySlot(slotLabel, 'image', { assetPath: asset.path, idiom, scale, appearanceKey: key });
           }).join('');
           return `<div class="appearance-row">${rowHtml}</div>`;
         }).join('')}</div>`;
@@ -421,13 +452,13 @@ async function renderImagePreview(asset, panel, vscode) {
 
         slotsHtml = `<div class="appearance-stack">${appearances.map(({ key, label }) => {
           const img = findImageByAppearance(images, key);
-          return img?.filename ? imageSlot(img, label) : emptySlot(label);
+          return img?.filename ? imageSlot(img, label) : emptySlot(label, 'image', { assetPath: asset.path, idiom, appearanceKey: key });
         }).join('')}</div>`;
       } else {
         // Scale-based images (@1x, @2x, @3x)
         slotsHtml = ['1x', '2x', '3x'].map(scale => {
           const img = images.find(i => i.scale === scale);
-          return img?.filename ? imageSlot(img, scale) : emptySlot(scale);
+          return img?.filename ? imageSlot(img, scale) : emptySlot(scale, 'image', { assetPath: asset.path, idiom, scale });
         }).join('');
       }
 
@@ -445,6 +476,9 @@ async function renderImagePreview(asset, panel, vscode) {
   setupVariantClicks(panel, '.variant-item[data-image-filename]', 'image', async (data) => {
     await renderImageVariantProperties(asset, data.imageFilename, data.imageUri, data.imageScale, vscode);
   });
+
+  // Empty slot click handlers for adding images
+  setupEmptySlotClicks(panel, vscode);
 }
 
 // Color slot helper
