@@ -240,6 +240,12 @@ function renderSnippets(asset) {
     processedName = toCamelCase(stripped || name);
   }
 
+  // Prepend parent namespaces if present
+  if (asset.parentNamespace) {
+    const namespacedParts = asset.parentNamespace.split('.').map(part => part.replace(/\s+/g, ''));
+    processedName = [...namespacedParts, processedName].join('.');
+  }
+
   const code = template.replace('{name}', processedName);
 
   snippetsPanel.innerHTML = `

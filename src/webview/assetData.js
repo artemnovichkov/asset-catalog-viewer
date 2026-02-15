@@ -1,15 +1,19 @@
 // Flatten items into assets array (including folders)
 // Add unique path to each asset for reliable indexing
-export function flattenItems(items, parentPath = '') {
+export function flattenItems(items, parentPath = '', parentNamespace = '') {
   const assets = [];
   items.forEach(item => {
+    const currentNamespace = item.providesNamespace
+      ? (parentNamespace ? `${parentNamespace}.${item.name}` : item.name)
+      : parentNamespace;
+
     if (item.type === 'folder') {
       const folderPath = parentPath ? `${parentPath}/${item.name}` : item.name;
-      assets.push({ ...item, _path: folderPath });
-      assets.push(...flattenItems(item.children || [], folderPath));
+      assets.push({ ...item, _path: folderPath, parentNamespace });
+      assets.push(...flattenItems(item.children || [], folderPath, currentNamespace));
     } else {
       const itemPath = parentPath ? `${parentPath}/${item.name}` : item.name;
-      assets.push({ ...item, _path: itemPath });
+      assets.push({ ...item, _path: itemPath, parentNamespace });
     }
   });
   return assets;
@@ -37,4 +41,16 @@ export function filterItems(items, searchText) {
     }
     return item;
   });
+}
+
+// Find item in tree by its filesystem path
+export function findItemByPath(items, targetPath) {
+  for (const item of items) {
+    if (item.path === targetPath) return item;
+    if (item.type === 'folder' && item.children) {
+      const found = findItemByPath(item.children, targetPath);
+      if (found) return found;
+    }
+  }
+  return null;
 }

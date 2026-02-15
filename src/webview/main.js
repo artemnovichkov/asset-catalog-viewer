@@ -5,7 +5,7 @@ import {
   allAssets, currentSelectedAssetIndex, selectedIndices, expandedFolders,
   setAllAssets, setFilterText, setExpandedFolders
 } from './state.js';
-import { flattenItems } from './assetData.js';
+import { flattenItems, findItemByPath } from './assetData.js';
 import { initResizers } from './resizer.js';
 import { renderAssetList, toggleFolder } from './assetList.js';
 import { selectAsset, deselectAsset, deselectVariant } from './selection.js';
@@ -324,19 +324,37 @@ setAllAssets(flattenItems(assetsData.items));
     } else if (message.command === 'namespaceUpdated') {
       // Update folder namespace state in-place
       const { folderPath, providesNamespace } = message;
+      
+      // Update in flat list
       const asset = allAssets.find(a => a.path === folderPath);
       if (asset && asset.type === 'folder') {
         asset.providesNamespace = providesNamespace;
+      }
 
-        // Update the folder icon in left panel
-        const folderItem = document.querySelector(`.asset-list-item.folder[data-path="${folderPath}"]`);
-        if (folderItem) {
-          if (providesNamespace) {
-            folderItem.classList.add('provides-namespace');
-          } else {
-            folderItem.classList.remove('provides-namespace');
-          }
+      // Update in source tree (crucial for re-flattening to work)
+      const treeItem = findItemByPath(assetsData.items, folderPath);
+      if (treeItem) {
+        treeItem.providesNamespace = providesNamespace;
+      }
+
+      // Update the folder icon in left panel
+      const folderItem = document.querySelector(`.asset-list-item.folder[data-path="${folderPath}"]`);
+      if (folderItem) {
+        if (providesNamespace) {
+          folderItem.classList.add('provides-namespace');
+        } else {
+          folderItem.classList.remove('provides-namespace');
         }
+      }
+
+      // Re-flatten assets to update parentNamespace for all children
+      setAllAssets(flattenItems(assetsData.items));
+
+      // Re-render properties to update snippets
+      if (currentSelectedAssetIndex >= 0) {
+        import('./properties.js').then(({ renderProperties }) => {
+          renderProperties(allAssets[currentSelectedAssetIndex], vscode);
+        });
       }
     } else if (message.command === 'preservesVectorUpdated') {
       // Update image set preserves vector state in-place
