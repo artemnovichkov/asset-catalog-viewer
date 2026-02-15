@@ -108,6 +108,9 @@ export class XCAssetsViewer {
         case 'addImageToSet':
           await this.handleAddImageToSet(message, xcassetsPath);
           break;
+        case 'removeImageFromSet':
+          await this.handleRemoveImageFromSet(message, xcassetsPath);
+          break;
         case 'quicklook':
           this.handleQuickLook(message, xcassetsPath);
           break;
@@ -366,6 +369,37 @@ export class XCAssetsViewer {
       panel.webview.postMessage({ command: 'imageSetCreated', name: imageSetName, path: imageSetPath });
     } catch (err: any) {
       vscode.window.showErrorMessage(`Failed to create image set: ${err.message}`);
+    }
+  }
+
+  private async handleRemoveImageFromSet(message: any, xcassetsPath: string) {
+    const { assetPath, filename } = message;
+    const resolvedPath = this.validatePath(assetPath, xcassetsPath);
+    if (!resolvedPath) {
+      vscode.window.showErrorMessage('Invalid path');
+      return;
+    }
+
+    try {
+      // Delete the image file
+      const filePath = path.join(resolvedPath, filename);
+      const resolvedFile = this.validatePath(filePath, xcassetsPath);
+      if (resolvedFile) {
+        await fs.promises.unlink(resolvedFile);
+      }
+
+      // Remove filename from Contents.json
+      const contentsPath = path.join(resolvedPath, 'Contents.json');
+      const data = await fs.promises.readFile(contentsPath, 'utf8');
+      const contents = JSON.parse(data);
+
+      const imageEntry = contents.images?.find((img: any) => img.filename === filename);
+      if (imageEntry) {
+        delete imageEntry.filename;
+        await fs.promises.writeFile(contentsPath, xcodeJsonStringify(contents));
+      }
+    } catch (err: any) {
+      vscode.window.showErrorMessage(`Failed to remove image: ${err.message}`);
     }
   }
 

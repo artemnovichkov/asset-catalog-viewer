@@ -74,10 +74,28 @@ setAllAssets(flattenItems(assetsData.items));
     }
   });
 
-  // Delete selected assets
+  // Delete selected assets or selected image variant
   document.addEventListener('keydown', (e) => {
     if ((e.key === 'Delete' || e.key === 'Backspace') && !e.repeat) {
       if (e.target.tagName === 'INPUT' || getIsRenaming()) return;
+
+      // Check if an image variant is selected in the preview panel
+      const selectedVariant = document.querySelector('.variant-item.selected[data-image-filename]');
+      if (selectedVariant && selectedVariant.dataset.imageFspath) {
+        e.preventDefault();
+        const asset = allAssets[currentSelectedAssetIndex];
+        if (asset && asset.path) {
+          // Save selection so it persists across refresh
+          const state = vscode.getState() || {};
+          vscode.setState({ ...state, selectedAssetPath: asset._path });
+          vscode.postMessage({
+            command: 'removeImageFromSet',
+            assetPath: asset.path,
+            filename: selectedVariant.dataset.imageFilename
+          });
+        }
+        return;
+      }
 
       if (selectedIndices.size > 0) {
         e.preventDefault();
