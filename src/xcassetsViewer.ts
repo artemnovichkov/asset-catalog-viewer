@@ -111,6 +111,9 @@ export class XCAssetsViewer {
         case 'removeImageFromSet':
           await this.handleRemoveImageFromSet(message, xcassetsPath);
           break;
+        case 'replaceImageInSet':
+          await this.handleReplaceImageInSet(message, xcassetsPath);
+          break;
         case 'quicklook':
           this.handleQuickLook(message, xcassetsPath);
           break;
@@ -400,6 +403,59 @@ export class XCAssetsViewer {
       }
     } catch (err: any) {
       vscode.window.showErrorMessage(`Failed to remove image: ${err.message}`);
+    }
+  }
+
+  private async handleReplaceImageInSet(message: any, xcassetsPath: string) {
+    const { assetPath, filename } = message;
+    const resolvedPath = this.validatePath(assetPath, xcassetsPath);
+    if (!resolvedPath) {
+      vscode.window.showErrorMessage('Invalid path');
+      return;
+    }
+
+    const fileUris = await vscode.window.showOpenDialog({
+      canSelectMany: false,
+      filters: { 'Images': ['png', 'jpg', 'jpeg', 'pdf', 'svg', 'heic'] },
+      title: 'Select Image'
+    });
+
+    if (!fileUris || fileUris.length === 0) {
+      return;
+    }
+
+    try {
+      const sourceFile = fileUris[0].fsPath;
+      const newExt = path.extname(sourceFile);
+      const oldExt = path.extname(filename);
+      const baseName = path.basename(filename, oldExt);
+      const newFilename = baseName + newExt;
+
+      // Remove old file
+      const oldFilePath = path.join(resolvedPath, filename);
+      const resolvedOld = this.validatePath(oldFilePath, xcassetsPath);
+      if (resolvedOld && fs.existsSync(resolvedOld)) {
+        await fs.promises.unlink(resolvedOld);
+      }
+
+      // Copy new file
+      const targetPath = path.join(resolvedPath, newFilename);
+      await fs.promises.copyFile(sourceFile, targetPath);
+
+      // Update Contents.json if filename changed
+      if (newFilename !== filename) {
+        const contentsPath = path.join(resolvedPath, 'Contents.json');
+        const data = await fs.promises.readFile(contentsPath, 'utf8');
+        const contents = JSON.parse(data);
+
+        const imageEntry = contents.images?.find((img: any) => img.filename === filename);
+        if (imageEntry) {
+          imageEntry.filename = newFilename;
+          await fs.promises.writeFile(contentsPath, xcodeJsonStringify(contents));
+        }
+      }
+    } catch (err: any) {
+      vscode.window.showErrorMessage(`Failed to replace image: ${err.message}`);
     }
   }
 

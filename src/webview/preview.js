@@ -68,6 +68,24 @@ function setupVariantClicks(panel, selector, dataAttr, handler) {
   });
 }
 
+// Setup double-click handlers for replacing images
+function setupImageDblClicks(container, vscode) {
+  container.querySelectorAll('.variant-item[data-image-filename]').forEach(item => {
+    item.addEventListener('dblclick', () => {
+      const asset = allAssets[currentSelectedAssetIndex];
+      if (asset && asset.path) {
+        const state = vscode.getState() || {};
+        vscode.setState({ ...state, selectedAssetPath: asset._path });
+        vscode.postMessage({
+          command: 'replaceImageInSet',
+          assetPath: asset.path,
+          filename: item.dataset.imageFilename
+        });
+      }
+    });
+  });
+}
+
 // Setup click handlers for empty image slots
 function setupEmptySlotClicks(container, vscode) {
   container.querySelectorAll('.empty-image-slot').forEach(slot => {
@@ -248,6 +266,9 @@ async function renderImagePreviewInContainer(asset, container, mainPanel, vscode
       await renderImageVariantProperties(asset, item.dataset.imageFilename, item.dataset.imageUri, item.dataset.imageScale, vscode);
     });
   });
+
+  // Double-click to replace image
+  setupImageDblClicks(container, vscode);
 
   // Empty slot click handlers for adding images
   setupEmptySlotClicks(container, vscode);
@@ -476,6 +497,9 @@ async function renderImagePreview(asset, panel, vscode) {
   setupVariantClicks(panel, '.variant-item[data-image-filename]', 'image', async (data) => {
     await renderImageVariantProperties(asset, data.imageFilename, data.imageUri, data.imageScale, vscode);
   });
+
+  // Double-click to replace image
+  setupImageDblClicks(panel, vscode);
 
   // Empty slot click handlers for adding images
   setupEmptySlotClicks(panel, vscode);
