@@ -194,6 +194,10 @@ function toCamelCase(str) {
       return index === 0 ? word.toLowerCase() : word.toUpperCase();
     })
     .replace(/\s+/g, '');
+
+  // Add underscore before any number that follows a letter
+  result = result.replace(/([a-zA-Z])(\d+)/g, '$1_$2');
+
   if (/^\d/.test(result)) {
     result = '_' + result.replace(/^(\d+)([a-z])/, (_, digits, ch) => digits + ch.toUpperCase());
   }
