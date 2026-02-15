@@ -49,3 +49,17 @@ export async function renderPdfToCanvas(pdfUrl, canvas, scale = 1, maxWidth = nu
     return false;
   }
 }
+
+// Get PDF dimensions
+export async function getPdfDimensions(pdfUrl) {
+  try {
+    const loadingTask = pdfjsLib.getDocument(pdfUrl);
+    const pdf = await loadingTask.promise;
+    const page = await pdf.getPage(1);
+    const viewport = page.getViewport({ scale: 1 });
+    return { width: Math.round(viewport.width), height: Math.round(viewport.height) };
+  } catch (error) {
+    console.error('Error getting PDF dimensions:', error);
+    return { width: 0, height: 0 };
+  }
+}

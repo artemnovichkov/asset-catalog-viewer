@@ -1,4 +1,5 @@
 import { escapeHtml, componentTo255 } from './utils.js';
+import { getPdfDimensions } from './pdfRenderer.js';
 
 // Constants
 const ALL_DEVICES = [
@@ -77,7 +78,13 @@ function getGamut(colorItems) {
 }
 
 // Helper: load image dimensions
-async function loadImageDimensions(uri) {
+async function loadImageDimensions(uri, filename) {
+  const isPdf = filename?.toLowerCase().endsWith('.pdf') || uri.toLowerCase().split('?')[0].split('#')[0].endsWith('.pdf');
+  
+  if (isPdf) {
+    return await getPdfDimensions(uri);
+  }
+
   try {
     const img = new Image();
     await new Promise((resolve, reject) => {
@@ -586,7 +593,7 @@ export function renderColorProperties(asset, colorIndex, vscode) {
 // Render app icon variant properties
 export async function renderAppIconVariantProperties(asset, filename, uri, size, scale, appearance, vscode) {
   const panel = document.getElementById('propertiesPanel');
-  const { width, height } = await loadImageDimensions(uri);
+  const { width, height } = await loadImageDimensions(uri, filename);
 
   const platforms = [...new Set(asset.icons.map(i => i.platform).filter(Boolean))];
   const platformsList = platforms.join(', ') || 'iOS';
@@ -615,7 +622,7 @@ export async function renderAppIconVariantProperties(asset, filename, uri, size,
 // Render image variant properties
 export async function renderImageVariantProperties(asset, filename, uri, scale, vscode) {
   const panel = document.getElementById('propertiesPanel');
-  const { width, height } = await loadImageDimensions(uri);
+  const { width, height } = await loadImageDimensions(uri, filename);
   const idioms = collectIdioms(asset.images);
 
   const uniqueScales = [...new Set(asset.images.map(i => i.scale))];
