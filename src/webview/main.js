@@ -63,6 +63,8 @@ setAllAssets(flattenItems(assetsData.items));
   // Quick Look with Space key
   document.addEventListener('keydown', (e) => {
     if (e.code === 'Space' && !e.repeat) {
+      const isFormControl = ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(e.target.tagName);
+      if (isFormControl || getIsRenaming()) return;
       e.preventDefault();
       const selectedVariant = document.querySelector('.variant-item.selected');
       if (selectedVariant) {
@@ -77,7 +79,8 @@ setAllAssets(flattenItems(assetsData.items));
   // Delete selected assets or selected image variant
   document.addEventListener('keydown', (e) => {
     if ((e.key === 'Delete' || e.key === 'Backspace') && !e.repeat) {
-      if (e.target.tagName === 'INPUT' || getIsRenaming()) return;
+      const isFormControl = ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(e.target.tagName);
+      if (isFormControl || getIsRenaming()) return;
 
       // Check if an image variant is selected in the preview panel
       const selectedVariant = document.querySelector('.variant-item.selected[data-image-filename]');
@@ -116,7 +119,8 @@ setAllAssets(flattenItems(assetsData.items));
 
   // Keyboard navigation
   document.addEventListener('keydown', (e) => {
-    if (e.target.tagName === 'INPUT') return;
+    const isFormControl = ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(e.target.tagName);
+    if (isFormControl || getIsRenaming()) return;
 
     const keys = ['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'Enter'];
     if (keys.includes(e.key)) {
