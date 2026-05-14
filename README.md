@@ -1,6 +1,6 @@
 # Asset Catalog Viewer
 
-[![VS Marketplace](https://img.shields.io/visual-studio-marketplace/v/artemnovichkov.asset-catalog-viewer?style=for-the-badge&logo=visual-studio-code&label=VS%20Code)](https://marketplace.visualstudio.com/items?itemName=artemnovichkov.asset-catalog-viewer)
+[![VS Marketplace](https://img.shields.io/vscode-marketplace/v/artemnovichkov.asset-catalog-viewer?style=for-the-badge&logo=visual-studio-code&label=VS%20Code)](https://marketplace.visualstudio.com/items?itemName=artemnovichkov.asset-catalog-viewer)
 [![Cursor](https://img.shields.io/badge/Cursor-Install-blue?style=for-the-badge&logo=cursor)](https://open-vsx.org/extension/artemnovichkov/asset-catalog-viewer)
 
 
